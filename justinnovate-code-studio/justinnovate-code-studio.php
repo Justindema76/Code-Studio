@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Justinnovate Code Studio
  * Description: A lightweight, block-based page builder with a custom full-screen canvas editor. Starts with a Banner (hero slider) element.
- * Version: 0.3.19
+ * Version: 0.3.20
  * Author: Justin DeMatteis
  * Text Domain: jcs
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'JCS_VERSION', '0.3.19' );
+define( 'JCS_VERSION', '0.3.20' );
 define( 'JCS_PLUGIN_FILE', __FILE__ );
 define( 'JCS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'JCS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

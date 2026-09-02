@@ -76,7 +76,6 @@ class JCS_Editor {
 		$font_url = JCS_Settings::google_fonts_url();
 		if ( $font_url ) wp_enqueue_style( 'jcs-fonts', $font_url, array(), null );
 		wp_enqueue_script( 'jcs-editor', JCS_PLUGIN_URL . 'editor/js/editor.js', array(), JCS_VERSION, true );
-		wp_enqueue_script( 'jcs-arrow-hotfix', JCS_PLUGIN_URL . 'editor/js/arrow-hotfix.js', array( 'jcs-editor' ), JCS_VERSION, true );
 		wp_add_inline_style( 'jcs-editor', ':root{--accent:' . esc_attr( $studio_settings['accent'] ) . ';}' );
 
 		wp_localize_script(
