@@ -1,0 +1,55 @@
+/* Code Studio output isolation: intentionally aggressive so Magento/PageBuilder cannot restyle banners. */
+.csx-banner-root,.csx-banner-root *,.csx-banner-root *::before,.csx-banner-root *::after{box-sizing:border-box!important}
+.csx-banner-root{position:relative!important;display:block!important;width:100%!important;max-width:none!important;height:var(--jcs-desktop-height,490px)!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#000!important;border:0!important;outline:0!important;isolation:isolate!important;font-style:normal!important;text-transform:none!important}
+.csx-banner-root .csx-track,.csx-banner-root .csx-slide,.csx-banner-root .csx-bg,.csx-banner-root .csx-overlay,.csx-banner-root .csx-scrim,.csx-banner-root .csx-inner,.csx-banner-root .csx-content{box-sizing:border-box!important}
+.csx-banner-root .csx-heading,.csx-banner-root .csx-sub,.csx-banner-root .csx-eyebrow,.csx-banner-root .csx-button,.csx-banner-root .csx-arrow{margin-top:0!important;margin-left:0!important;margin-right:0!important;border-style:solid!important;text-indent:0!important;text-decoration:none!important;text-transform:none!important;font-style:normal!important;max-width:none!important}
+.csx-banner-root .csx-heading,.csx-banner-root .csx-sub{padding:0!important;border:0!important;background:transparent!important}
+.csx-banner-root .csx-button{box-sizing:border-box!important;border:0!important;line-height:1!important;appearance:none!important;-webkit-appearance:none!important}
+.csx-banner-root .csx-arrow{box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;min-width:44px!important;max-width:44px!important;width:44px!important;min-height:44px!important;max-height:44px!important;height:44px!important;aspect-ratio:1/1!important;border-style:solid!important;border-width:1px!important;border-radius:9999px!important;font-family:Arial,sans-serif!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;text-indent:0!important;letter-spacing:0!important;white-space:nowrap!important;overflow:hidden!important;appearance:none!important;-webkit-appearance:none!important}
+.csx-banner-root .csx-arrow::before,.csx-banner-root .csx-arrow::after{content:none!important;display:none!important}
+.csx-banner-root .csx-bg-link{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;text-decoration:none!important;z-index:3!important;cursor:pointer!important}
+.csx-banner-root .csx-bg-link::before,.csx-banner-root .csx-bg-link::after{content:none!important;display:none!important}
+.csx-banner-root .csx-inner{z-index:4!important}
+.csx-banner-root .csx-arrow,.csx-banner-root .csx-dash-track{z-index:6!important}
+.csx-banner-root{position:relative;width:100%;height:var(--jcs-desktop-height,490px);min-height:0!important;overflow:hidden;background:#000;font-family:Inter,sans-serif;isolation:isolate}
+.csx-banner-root,.csx-banner-root *{box-sizing:border-box}
+.csx-track{position:relative;width:100%;height:100%!important;min-height:0!important}
+.csx-slide{position:absolute;inset:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .6s ease}
+.csx-slide.is-active{opacity:1;visibility:visible;pointer-events:auto}
+.csx-bg{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-height:100%!important;overflow:hidden;background-color:transparent}
+.csx-bg-link{position:absolute;inset:0;z-index:1;display:block}
+.csx-bg-link-mobile{display:none}
+.csx-scrim{position:absolute;inset:0;z-index:1;pointer-events:none}
+.csx-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;display:none}
+.csx-inner{position:relative;z-index:2;display:flex;align-items:center;height:100%;max-width:1360px;margin:auto;padding:0 64px}
+.csx-content{color:#fff}
+.csx-eyebrow{display:inline-block;margin-bottom:20px;padding:5px 12px;font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.csx-heading{margin:0 0 16px;font-weight:700;line-height:1.06;text-shadow:0 2px 18px rgba(0,0,0,.4)}
+.csx-sub{margin:0 0 28px;font-weight:400;line-height:1.55}
+.csx-button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 30px;font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
+.csx-arrow{position:absolute;top:50%;z-index:5;width:44px;height:44px;border-radius:50%;font-size:28px;line-height:1;cursor:pointer;transform:translateY(-50%);border:1px solid transparent}
+.csx-prev{left:20px}.csx-next{right:20px}
+.csx-dash-track{position:absolute;left:64px;bottom:24px;z-index:5;display:flex;gap:6px}
+.csx-dash{width:34px;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden;cursor:pointer}
+.csx-dash span{display:block;width:100%;height:100%;transform:scaleX(0);transform-origin:left}
+.csx-dash.is-active span{transform:scaleX(1)}
+.csx-dash.is-active.is-animating span{transition:transform linear}
+.csx-dash.is-filled span{transform:scaleX(1);transition:none}
+@media(max-width:900px){
+  .csx-banner-root{height:var(--jcs-mobile-height,620px)!important}
+  .csx-track{height:100%!important}
+  .csx-bg{background-image:var(--jcs-mobile-bg)!important;background-size:var(--jcs-mobile-bg-size,100% auto)!important;background-position:var(--jcs-mobile-bg-pos,50% 23%)!important;background-attachment:scroll!important;background-repeat:no-repeat!important}
+  .csx-bg-link-desktop{display:none!important}
+  .csx-bg-link-mobile{display:block!important}
+  .csx-scrim{background:var(--jcs-scrim-m)!important}
+  .csx-inner{justify-content:var(--jcs-m-justify,flex-start)!important;align-items:var(--jcs-m-align,flex-end)!important;padding-left:var(--jcs-m-pad,26px)!important;padding-right:var(--jcs-m-pad,26px)!important;padding-bottom:60px!important}
+  .csx-content{display:var(--jcs-mobile-display,block)!important;width:min(var(--jcs-m-width,480px),96%)!important;max-width:none!important;text-align:var(--jcs-m-text-align,left)!important;transform:translate(var(--jcs-m-shiftx,0px),var(--jcs-m-shifty,0px))!important;background:var(--jcs-m-content-bg,transparent)!important;padding:var(--jcs-m-content-pad,0px)!important;border-radius:var(--jcs-m-content-radius,0px)!important;box-shadow:var(--jcs-m-content-shadow,none)!important}
+  .csx-eyebrow{margin-bottom:var(--jcs-m-gap)!important;font-size:var(--jcs-m-size)!important;letter-spacing:var(--jcs-m-letter)!important;transform:translate(var(--jcs-m-shiftx),var(--jcs-m-shifty))!important}
+  .csx-heading{margin-bottom:var(--jcs-m-gap)!important;font-size:var(--jcs-m-size)!important;letter-spacing:var(--jcs-m-letter)!important;transform:translate(var(--jcs-m-shiftx),var(--jcs-m-shifty))!important}
+  .csx-sub{margin-bottom:var(--jcs-m-gap)!important;font-size:var(--jcs-m-size)!important;letter-spacing:var(--jcs-m-letter)!important;transform:translate(var(--jcs-m-shiftx),var(--jcs-m-shifty))!important}
+  .csx-button{font-size:var(--jcs-m-size)!important;letter-spacing:var(--jcs-m-letter)!important;transform:translate(var(--jcs-m-shiftx),var(--jcs-m-shifty))!important;width:var(--jcs-m-width)!important}
+  .csx-dash-track{left:26px;bottom:24px}
+  .csx-arrow{top:auto;bottom:18px;transform:none}
+  .csx-prev{left:auto;right:82px}.csx-next{right:26px}
+}
+.csx-banner-root.csx-single-slide .csx-arrow,.csx-banner-root.csx-single-slide .csx-dash-track{display:none!important}
