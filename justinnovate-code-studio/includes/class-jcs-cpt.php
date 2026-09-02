@@ -72,13 +72,45 @@ class JCS_CPT {
 	}
 
 	/**
-	 * Repair Unicode escapes that were previously stored without the leading
-	 * backslash (for example "u00e9" instead of "\\u00e9"). This only runs
-	 * when the raw JSON cannot be decoded as-is, so valid text is left alone.
+	 * Convert broken literal Unicode markers such as "u00e9" back into their
+	 * real UTF-8 characters. Older saves lost the leading backslash before
+	 * WordPress stored the JSON, which left otherwise-valid JSON containing
+	 * corrupted strings like "imprimu00e9es".
 	 */
-	private static function repair_broken_unicode_json( $raw ) {
-		$repaired = preg_replace( '/(?<!\\\\)u([0-9a-fA-F]{4})/', '\\\\u$1', $raw );
-		return is_string( $repaired ) ? $repaired : $raw;
+	private static function repair_broken_unicode_string( $value ) {
+		if ( ! is_string( $value ) || false === strpos( $value, 'u' ) ) {
+			return $value;
+		}
+
+		$repaired = preg_replace_callback(
+			'/(?<!\\\\)u([0-9a-fA-F]{4})/',
+			function ( $matches ) {
+				$decoded = json_decode( '"\\u' . $matches[1] . '"' );
+				return is_string( $decoded ) ? $decoded : $matches[0];
+			},
+			$value
+		);
+
+		return is_string( $repaired ) ? $repaired : $value;
+	}
+
+	private static function repair_broken_unicode_values( $value, &$changed = false ) {
+		if ( is_array( $value ) ) {
+			foreach ( $value as $key => $item ) {
+				$value[ $key ] = self::repair_broken_unicode_values( $item, $changed );
+			}
+			return $value;
+		}
+
+		if ( is_string( $value ) ) {
+			$repaired = self::repair_broken_unicode_string( $value );
+			if ( $repaired !== $value ) {
+				$changed = true;
+			}
+			return $repaired;
+		}
+
+		return $value;
 	}
 
 	/**
@@ -94,24 +126,24 @@ class JCS_CPT {
 		}
 
 		$decoded = json_decode( $raw, true );
-		if ( is_array( $decoded ) ) {
-			return $decoded;
+		if ( ! is_array( $decoded ) ) {
+			return array();
 		}
 
-		$repaired = self::repair_broken_unicode_json( $raw );
-		$decoded  = json_decode( $repaired, true );
-		if ( is_array( $decoded ) ) {
-			update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $decoded ) ) );
-			return $decoded;
+		$changed = false;
+		$decoded = self::repair_broken_unicode_values( $decoded, $changed );
+
+		if ( $changed ) {
+			update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE ) ) );
 		}
 
-		return array();
+		return $decoded;
 	}
 
 	public static function save_data( $post_id, array $data, $lang = 'en' ) {
 		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
 
-		return update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $data ) ) );
+		return update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) ) );
 	}
 
 	public static function get_element_type( $post_id ) {
