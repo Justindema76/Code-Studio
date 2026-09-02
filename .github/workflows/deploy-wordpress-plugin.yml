@@ -33,3 +33,5 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+
+# Redeploy marker: standalone Code Studio password access
