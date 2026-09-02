@@ -26,11 +26,6 @@ class JCS_Editor {
 		add_action( 'current_screen', array( $this, 'maybe_render_editor' ) );
 	}
 
-	/**
-	 * Registered so admin.php?page=jcs-editor is a valid destination and
-	 * capability-checked by core, but we never let WP print its own chrome
-	 * around it — maybe_render_editor() short-circuits that.
-	 */
 	public function register_hidden_page() {
 		add_submenu_page(
 			null,
@@ -53,10 +48,6 @@ class JCS_Editor {
 		);
 	}
 
-	/**
-	 * Intercepts the request before WP prints the normal admin page wrapper
-	 * and outputs a bare document instead.
-	 */
 	public function maybe_render_editor( $screen ) {
 		if ( ! isset( $screen->id ) || false === strpos( $screen->id, 'jcs-editor' ) ) {
 			return;
@@ -85,6 +76,7 @@ class JCS_Editor {
 		$font_url = JCS_Settings::google_fonts_url();
 		if ( $font_url ) wp_enqueue_style( 'jcs-fonts', $font_url, array(), null );
 		wp_enqueue_script( 'jcs-editor', JCS_PLUGIN_URL . 'editor/js/editor.js', array(), JCS_VERSION, true );
+		wp_enqueue_script( 'jcs-arrow-hotfix', JCS_PLUGIN_URL . 'editor/js/arrow-hotfix.js', array( 'jcs-editor' ), JCS_VERSION, true );
 		wp_add_inline_style( 'jcs-editor', ':root{--accent:' . esc_attr( $studio_settings['accent'] ) . ';}' );
 
 		wp_localize_script(
@@ -107,7 +99,6 @@ class JCS_Editor {
 			)
 		);
 
-		// Bare document — no admin bar, no menu, no theme header/footer.
 		?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
