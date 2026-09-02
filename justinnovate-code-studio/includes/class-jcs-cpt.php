@@ -72,10 +72,10 @@ class JCS_CPT {
 	}
 
 	/**
-	 * Convert broken literal Unicode markers such as "u00e9" back into their
-	 * real UTF-8 characters. Older saves lost the leading backslash before
-	 * WordPress stored the JSON, which left otherwise-valid JSON containing
-	 * corrupted strings like "imprimu00e9es".
+	 * Old versions could store a JSON escape after WordPress had stripped its
+	 * backslash, leaving literal text such as "imprimu00e9es". Decode only
+	 * those six-character Unicode markers back to the single UTF-8 character
+	 * they represent. Existing spaces are not changed.
 	 */
 	private static function repair_broken_unicode_string( $value ) {
 		if ( ! is_string( $value ) || false === strpos( $value, 'u' ) ) {
@@ -84,7 +84,7 @@ class JCS_CPT {
 
 		$repaired = preg_replace_callback(
 			'/(?<!\\\\)u([0-9a-fA-F]{4})/',
-			function ( $matches ) {
+			static function ( $matches ) {
 				$decoded = json_decode( '"\\u' . $matches[1] . '"' );
 				return is_string( $decoded ) ? $decoded : $matches[0];
 			},
@@ -114,6 +114,15 @@ class JCS_CPT {
 	}
 
 	/**
+	 * Store native UTF-8 characters directly in JSON. JSON_UNESCAPED_UNICODE
+	 * keeps French accents as é/è/à/ç instead of \u00e9-style sequences, while
+	 * wp_slash() protects the JSON from WordPress metadata slashing rules.
+	 */
+	private static function encode_data( array $data ) {
+		return wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+	}
+
+	/**
 	 * The element's config, stored as a single JSON blob. For a banner this
 	 * is the `slides` array — same shape the front-end JS canvas already
 	 * works with, so the editor doesn't need a translation layer.
@@ -130,20 +139,29 @@ class JCS_CPT {
 			return array();
 		}
 
+		// One-time self-healing migration for records written by older builds.
 		$changed = false;
 		$decoded = self::repair_broken_unicode_values( $decoded, $changed );
 
 		if ( $changed ) {
-			update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE ) ) );
+			$json = self::encode_data( $decoded );
+			if ( is_string( $json ) ) {
+				update_post_meta( $post_id, $key, wp_slash( $json ) );
+			}
 		}
 
 		return $decoded;
 	}
 
 	public static function save_data( $post_id, array $data, $lang = 'en' ) {
-		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
+		$key  = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
+		$json = self::encode_data( $data );
 
-		return update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) ) );
+		if ( ! is_string( $json ) ) {
+			return false;
+		}
+
+		return update_post_meta( $post_id, $key, wp_slash( $json ) );
 	}
 
 	public static function get_element_type( $post_id ) {
