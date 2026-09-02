@@ -1,6 +1,9 @@
 (function(){
   'use strict';
 
+  var livePreviewRef = null;
+  var PATCH_MARKER = 'JCS-HOST-OVERRIDES-V1';
+
   function forceArrow(el, side){
     if(!el) return;
     el.style.setProperty('display','flex','important');
@@ -22,89 +25,87 @@
     el.style.setProperty('font-size','28px','important');
     el.style.setProperty('font-weight','400','important');
     el.style.setProperty('line-height','1','important');
+    el.style.setProperty('letter-spacing','0','important');
     el.style.setProperty('text-transform','none','important');
-    el.style.setProperty('z-index','50','important');
+    el.style.setProperty('opacity','1','important');
+    el.style.setProperty('visibility','visible','important');
+    el.style.setProperty('pointer-events','auto','important');
+    el.style.setProperty('z-index','999','important');
     el.style.setProperty('cursor','pointer','important');
     if(side==='prev'){
       el.style.setProperty('left','18px','important');
-      el.style.removeProperty('right');
+      el.style.setProperty('right','auto','important');
     }else{
       el.style.setProperty('right','18px','important');
-      el.style.removeProperty('left');
+      el.style.setProperty('left','auto','important');
     }
   }
 
   function ensureCanvasArrows(doc){
     var canvas = doc.getElementById('jcsCanvas');
-    if(canvas){
-      var prev = canvas.querySelector('.jcs-c-prev');
-      var next = canvas.querySelector('.jcs-c-next');
-      if(!prev){
-        prev = doc.createElement('div');
-        prev.className='jcs-c-arrow jcs-c-prev';
-        prev.innerHTML='&#8249;';
-        canvas.appendChild(prev);
-      }
-      if(!next){
-        next = doc.createElement('div');
-        next.className='jcs-c-arrow jcs-c-next';
-        next.innerHTML='&#8250;';
-        canvas.appendChild(next);
-      }
-      forceArrow(prev,'prev');
-      forceArrow(next,'next');
-    }
+    if(!canvas) return;
+    var prev = canvas.querySelector('.jcs-c-prev');
+    var next = canvas.querySelector('.jcs-c-next');
+    if(prev) forceArrow(prev,'prev');
+    if(next) forceArrow(next,'next');
   }
 
   function ensureGeneratedArrows(doc){
     doc.querySelectorAll('.csx-banner-root').forEach(function(root){
-      var prev = root.querySelector('.csx-prev');
-      var next = root.querySelector('.csx-next');
-      if(!prev){
-        prev = doc.createElement('span');
-        prev.className='csx-arrow csx-prev';
-        prev.setAttribute('role','button');
-        prev.setAttribute('tabindex','0');
-        prev.setAttribute('aria-label','Previous slide');
-        prev.innerHTML='&#8249;';
-        root.appendChild(prev);
-      }
-      if(!next){
-        next = doc.createElement('span');
-        next.className='csx-arrow csx-next';
-        next.setAttribute('role','button');
-        next.setAttribute('tabindex','0');
-        next.setAttribute('aria-label','Next slide');
-        next.innerHTML='&#8250;';
-        root.appendChild(next);
-      }
-      forceArrow(prev,'prev');
-      forceArrow(next,'next');
+      if(root.querySelectorAll('.csx-slide').length <= 1) return;
+      forceArrow(root.querySelector('.csx-prev'),'prev');
+      forceArrow(root.querySelector('.csx-next'),'next');
     });
   }
 
-  function fixDocument(doc){
-    try{
-      ensureCanvasArrows(doc);
-      ensureGeneratedArrows(doc);
-      doc.querySelectorAll('iframe').forEach(function(frame){
+  function injectPreviewCss(doc){
+    if(!doc || !doc.head) return;
+    var style = doc.getElementById('jcs-live-arrow-override');
+    if(!style){
+      style = doc.createElement('style');
+      style.id = 'jcs-live-arrow-override';
+      style.textContent = '.csx-banner-root .csx-arrow{display:flex!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;z-index:999!important}.csx-banner-root .csx-prev{left:18px!important;right:auto!important}.csx-banner-root .csx-next{right:18px!important;left:auto!important}';
+      doc.head.appendChild(style);
+    }
+    ensureGeneratedArrows(doc);
+  }
+
+  function patchEmbedCode(){
+    var out = document.getElementById('jcsCodeOutput');
+    if(!out || !out.value || out.value.indexOf(PATCH_MARKER)!==-1) return;
+    out.value += '\n<!-- '+PATCH_MARKER+' -->\n<style>\n.csx-banner-root .csx-arrow{display:flex!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;z-index:999!important}\n.csx-banner-root .csx-prev{left:18px!important;right:auto!important}\n.csx-banner-root .csx-next{right:18px!important;left:auto!important}\nmain#maincontent.page-main-full-width:has(.csx-banner-root){padding-top:0!important;padding-bottom:0!important}\n</style>\n';
+  }
+
+  function attachLivePreviewFix(){
+    var btn = document.getElementById('jcsLivePreview');
+    if(!btn || btn.dataset.jcsArrowFixBound==='1') return;
+    btn.dataset.jcsArrowFixBound='1';
+    btn.addEventListener('click', function(){
+      setTimeout(function(){
         try{
-          if(frame.contentDocument) {
-            ensureGeneratedArrows(frame.contentDocument);
-            ensureCanvasArrows(frame.contentDocument);
+          livePreviewRef = window.open('', 'jcs-live-preview');
+          if(livePreviewRef && !livePreviewRef.closed){
+            injectPreviewCss(livePreviewRef.document);
+            setTimeout(function(){ if(livePreviewRef && !livePreviewRef.closed) injectPreviewCss(livePreviewRef.document); },150);
+            setTimeout(function(){ if(livePreviewRef && !livePreviewRef.closed) injectPreviewCss(livePreviewRef.document); },600);
           }
         }catch(e){}
-      });
+      },0);
+    });
+  }
+
+  function run(){
+    ensureCanvasArrows(document);
+    ensureGeneratedArrows(document);
+    patchEmbedCode();
+    attachLivePreviewFix();
+    try{
+      if(livePreviewRef && !livePreviewRef.closed) injectPreviewCss(livePreviewRef.document);
     }catch(e){}
   }
 
-  function run(){ fixDocument(document); }
   run();
   document.addEventListener('DOMContentLoaded',run);
   window.addEventListener('load',run);
-  setInterval(run,500);
-
-  if(window.MutationObserver){
-    new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true});
-  }
+  setInterval(run,300);
 })();
