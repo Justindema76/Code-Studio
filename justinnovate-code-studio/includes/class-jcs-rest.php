@@ -4,9 +4,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Two routes: load an element's data, save an element's data.
- * Auth is standard WP REST cookie + nonce (same pattern core uses),
- * so no separate API key system to build or maintain.
+ * Code Studio REST endpoints.
+ *
+ * WordPress users use normal REST cookie + nonce authentication. Shared
+ * Code Studio password sessions use the plugin's own access cookie and are
+ * allowed only on the jcs/v1 routes below.
  */
 class JCS_REST {
 
@@ -23,6 +25,47 @@ class JCS_REST {
 
 	private function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_filter( 'rest_authentication_errors', array( $this, 'allow_shared_studio_session' ), 110 );
+	}
+
+	/**
+	 * WordPress validates X-WP-Nonce before route permission callbacks run.
+	 * That nonce belongs to a WordPress login, while Code Studio shared-password
+	 * users are intentionally not WordPress users. If the request is one of our
+	 * own jcs/v1 endpoints and the secure Studio access cookie is valid, clear
+	 * only the WordPress cookie-nonce authentication error so our normal route
+	 * permission callback can authorize the request.
+	 */
+	public function allow_shared_studio_session( $result ) {
+		if ( ! $this->is_jcs_rest_request() ) {
+			return $result;
+		}
+
+		if ( ! class_exists( 'JCS_Frontend' ) || ! JCS_Frontend::instance()->has_access() ) {
+			return $result;
+		}
+
+		if ( is_wp_error( $result ) && 'rest_cookie_invalid_nonce' === $result->get_error_code() ) {
+			return true;
+		}
+
+		return $result;
+	}
+
+	private function is_jcs_rest_request() {
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+
+		if ( false !== strpos( $path, '/wp-json/' . self::NAMESPACE_ . '/' ) ) {
+			return true;
+		}
+
+		if ( isset( $_GET['rest_route'] ) ) {
+			$route = '/' . ltrim( (string) wp_unslash( $_GET['rest_route'] ), '/' );
+			return 0 === strpos( $route, '/' . self::NAMESPACE_ . '/' );
+		}
+
+		return false;
 	}
 
 	public function register_routes() {
@@ -35,11 +78,11 @@ class JCS_REST {
 					'callback'            => array( $this, 'get_element' ),
 					'permission_callback' => array( $this, 'can_edit' ),
 					'args'                => array(
-					'id' => array(
-						'validate_callback' => static function ( $value, $request, $parameter ) {
-							return is_numeric( $value ) && (int) $value > 0;
-						},
-					),
+						'id' => array(
+							'validate_callback' => static function ( $value, $request, $parameter ) {
+								return is_numeric( $value ) && (int) $value > 0;
+							},
+						),
 					),
 				),
 				array(
@@ -47,11 +90,11 @@ class JCS_REST {
 					'callback'            => array( $this, 'save_element' ),
 					'permission_callback' => array( $this, 'can_edit' ),
 					'args'                => array(
-					'id' => array(
-						'validate_callback' => static function ( $value, $request, $parameter ) {
-							return is_numeric( $value ) && (int) $value > 0;
-						},
-					),
+						'id' => array(
+							'validate_callback' => static function ( $value, $request, $parameter ) {
+								return is_numeric( $value ) && (int) $value > 0;
+							},
+						),
 					),
 				),
 			)
@@ -61,8 +104,8 @@ class JCS_REST {
 			self::NAMESPACE_,
 			'/translate/(?P<id>\d+)',
 			array(
-				'methods' => WP_REST_Server::CREATABLE,
-				'callback' => array( $this, 'translate_element' ),
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'translate_element' ),
 				'permission_callback' => array( $this, 'can_edit' ),
 			)
 		);
@@ -79,31 +122,38 @@ class JCS_REST {
 	}
 
 	public function can_edit( $request ) {
-		if ( class_exists( 'JCS_Frontend' ) && JCS_Frontend::instance()->has_access() ) return true;
+		if ( class_exists( 'JCS_Frontend' ) && JCS_Frontend::instance()->has_access() ) {
+			return true;
+		}
+
 		$id = (int) $request->get_param( 'id' );
-		if ( $id ) return current_user_can( 'edit_post', $id );
+		if ( $id ) {
+			return current_user_can( 'edit_post', $id );
+		}
+
 		return current_user_can( 'edit_posts' );
 	}
 
 	public function get_element( WP_REST_Request $request ) {
-		$id = (int) $request['id'];
+		$id   = (int) $request['id'];
 		$post = get_post( $id );
 		if ( ! $post || JCS_CPT::POST_TYPE !== $post->post_type ) {
 			return new WP_Error( 'jcs_not_found', __( 'Element not found.', 'jcs' ), array( 'status' => 404 ) );
 		}
+
 		return rest_ensure_response(
 			array(
-				'id'      => $id,
-				'title'   => get_the_title( $id ),
-				'type'    => JCS_CPT::get_element_type( $id ),
-				'data'    => JCS_CPT::get_data( $id, $this->language( $request ) ),
+				'id'    => $id,
+				'title' => get_the_title( $id ),
+				'type'  => JCS_CPT::get_element_type( $id ),
+				'data'  => JCS_CPT::get_data( $id, $this->language( $request ) ),
 			)
 		);
 	}
 
 	public function save_element( WP_REST_Request $request ) {
-		$id     = (int) $request['id'];
-		$post   = get_post( $id );
+		$id   = (int) $request['id'];
+		$post = get_post( $id );
 		if ( ! $post || JCS_CPT::POST_TYPE !== $post->post_type ) {
 			return new WP_Error( 'jcs_not_found', __( 'Element not found.', 'jcs' ), array( 'status' => 404 ) );
 		}
@@ -139,34 +189,70 @@ class JCS_REST {
 
 	private function translate_text( $text ) {
 		$text = (string) $text;
-		if ( '' === trim( $text ) ) return $text;
+		if ( '' === trim( $text ) ) {
+			return $text;
+		}
 
-		// Primary translator: Google Translate's public web endpoint.
 		$url = add_query_arg(
-			array( 'client' => 'gtx', 'sl' => 'en', 'tl' => 'fr', 'dt' => 't', 'q' => $text ),
+			array(
+				'client' => 'gtx',
+				'sl'     => 'en',
+				'tl'     => 'fr',
+				'dt'     => 't',
+				'q'      => $text,
+			),
 			'https://translate.googleapis.com/translate_a/single'
 		);
-		$response = wp_remote_get( $url, array( 'timeout' => 15, 'redirection' => 3, 'user-agent' => 'Mozilla/5.0 Justinnovate-Code-Studio/' . JCS_VERSION ) );
+
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout'     => 15,
+				'redirection' => 3,
+				'user-agent'  => 'Mozilla/5.0 Justinnovate-Code-Studio/' . JCS_VERSION,
+			)
+		);
+
 		if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
 			$json = json_decode( wp_remote_retrieve_body( $response ), true );
 			if ( is_array( $json ) && ! empty( $json[0] ) ) {
 				$out = '';
-				foreach ( $json[0] as $part ) { if ( is_array( $part ) && isset( $part[0] ) ) $out .= $part[0]; }
-				if ( '' !== trim( $out ) && $out !== $text ) return $out;
+				foreach ( $json[0] as $part ) {
+					if ( is_array( $part ) && isset( $part[0] ) ) {
+						$out .= $part[0];
+					}
+				}
+				if ( '' !== trim( $out ) && $out !== $text ) {
+					return $out;
+				}
 			}
 		}
 
-		// Fallback translator so the button does not silently claim success when
-		// a host blocks the primary endpoint.
 		$fallback_url = add_query_arg(
-			array( 'q' => $text, 'langpair' => 'en|fr' ),
+			array(
+				'q'        => $text,
+				'langpair' => 'en|fr',
+			),
 			'https://api.mymemory.translated.net/get'
 		);
-		$fallback = wp_remote_get( $fallback_url, array( 'timeout' => 15, 'redirection' => 3, 'user-agent' => 'Mozilla/5.0 Justinnovate-Code-Studio/' . JCS_VERSION ) );
+
+		$fallback = wp_remote_get(
+			$fallback_url,
+			array(
+				'timeout'     => 15,
+				'redirection' => 3,
+				'user-agent'  => 'Mozilla/5.0 Justinnovate-Code-Studio/' . JCS_VERSION,
+			)
+		);
+
 		if ( ! is_wp_error( $fallback ) && 200 === wp_remote_retrieve_response_code( $fallback ) ) {
 			$json = json_decode( wp_remote_retrieve_body( $fallback ), true );
-			$out = isset( $json['responseData']['translatedText'] ) ? html_entity_decode( (string) $json['responseData']['translatedText'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) : '';
-			if ( '' !== trim( $out ) && $out !== $text ) return $out;
+			$out  = isset( $json['responseData']['translatedText'] )
+				? html_entity_decode( (string) $json['responseData']['translatedText'], ENT_QUOTES | ENT_HTML5, 'UTF-8' )
+				: '';
+			if ( '' !== trim( $out ) && $out !== $text ) {
+				return $out;
+			}
 		}
 
 		return new WP_Error( 'jcs_translation_failed', 'The translation service returned the original English text.' );
@@ -175,27 +261,30 @@ class JCS_REST {
 	public function translate_element( WP_REST_Request $request ) {
 		$id = (int) $request['id'];
 
-		// Always translate from the saved ENGLISH project. The French editor may
-		// already contain a copied/older version and must never be used as source.
 		$data = JCS_CPT::get_data( $id, 'en' );
 		if ( empty( $data ) ) {
 			$body = $request->get_json_params();
 			$data = ( isset( $body['data'] ) && is_array( $body['data'] ) ) ? $body['data'] : array();
 		}
-		if ( empty( $data ) ) return new WP_Error( 'jcs_no_english_data', 'No English banner content was found to translate.', array( 'status' => 400 ) );
 
-		// Every human-readable banner field is translated. Design/layout/image
-		// settings and URLs remain exactly the same.
+		if ( empty( $data ) ) {
+			return new WP_Error( 'jcs_no_english_data', 'No English banner content was found to translate.', array( 'status' => 400 ) );
+		}
+
 		$text_fields = array( 'eyebrow', 'heading', 'subheading', 'buttonText', 'altText' );
-		$failures = array();
+		$failures    = array();
+
 		foreach ( $data as $slide_index => &$slide ) {
 			foreach ( $text_fields as $key ) {
-				if ( ! isset( $slide[$key] ) || '' === trim( (string) $slide[$key] ) ) continue;
-				$translated = $this->translate_text( $slide[$key] );
+				if ( ! isset( $slide[ $key ] ) || '' === trim( (string) $slide[ $key ] ) ) {
+					continue;
+				}
+
+				$translated = $this->translate_text( $slide[ $key ] );
 				if ( is_wp_error( $translated ) ) {
 					$failures[] = 'Banner ' . ( $slide_index + 1 ) . ': ' . $key;
 				} else {
-					$slide[$key] = $translated;
+					$slide[ $key ] = $translated;
 				}
 			}
 		}
@@ -209,7 +298,12 @@ class JCS_REST {
 			);
 		}
 
-		return rest_ensure_response( array( 'data' => $data, 'translated' => true ) );
+		return rest_ensure_response(
+			array(
+				'data'       => $data,
+				'translated' => true,
+			)
+		);
 	}
 
 	public function list_elements( WP_REST_Request $request ) {
@@ -220,6 +314,7 @@ class JCS_REST {
 				'post_status'    => 'any',
 			)
 		);
+
 		$out = array();
 		foreach ( $posts as $post ) {
 			$out[] = array(
@@ -228,6 +323,7 @@ class JCS_REST {
 				'type'  => JCS_CPT::get_element_type( $post->ID ),
 			);
 		}
+
 		return rest_ensure_response( $out );
 	}
 }
