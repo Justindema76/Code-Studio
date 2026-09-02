@@ -71,7 +71,7 @@ class JCS_REST {
 					'permission_callback' => array( $this, 'can_edit' ),
 					'args'                => array(
 						'id' => array(
-							'validate_callback' => static function ( $value, $request, $parameter ) {
+							'validate_callback' => static function ( $value ) {
 								return is_numeric( $value ) && (int) $value > 0;
 							},
 						),
@@ -83,7 +83,7 @@ class JCS_REST {
 					'permission_callback' => array( $this, 'can_edit' ),
 					'args'                => array(
 						'id' => array(
-							'validate_callback' => static function ( $value, $request, $parameter ) {
+							'validate_callback' => static function ( $value ) {
 								return is_numeric( $value ) && (int) $value > 0;
 							},
 						),
@@ -180,41 +180,65 @@ class JCS_REST {
 	}
 
 	/**
-	 * Keep translated text as real UTF-8. This deliberately does not collapse
-	 * or invent spaces; it only decodes HTML entities, replaces NBSP with a
-	 * normal space, validates UTF-8, and repairs legacy literal u00xx markers
-	 * if a translation service ever returns one.
+	 * Decode any Unicode escape representation into real UTF-8 before it ever
+	 * reaches the editor. Handles both "u00e9" and "\\u00e9" forms.
 	 */
 	private function normalize_translation_output( $text ) {
 		$text = html_entity_decode( (string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 		$text = str_replace( "\xC2\xA0", ' ', $text );
 		$text = wp_check_invalid_utf8( $text, true );
 
-		$text = preg_replace_callback(
-			'/(?<!\\\\)u([0-9a-fA-F]{4})/',
-			static function ( $matches ) {
-				$decoded = json_decode( '"\\u' . $matches[1] . '"' );
-				return is_string( $decoded ) ? $decoded : $matches[0];
-			},
-			$text
-		);
+		for ( $pass = 0; $pass < 3; $pass++ ) {
+			$before = $text;
+			$text   = preg_replace_callback(
+				'/\\\\?u([0-9a-fA-F]{4})/',
+				static function ( $matches ) {
+					$decoded = json_decode( '"\\u' . $matches[1] . '"' );
+					return is_string( $decoded ) ? $decoded : $matches[0];
+				},
+				$text
+			);
+			if ( ! is_string( $text ) || $text === $before ) {
+				break;
+			}
+		}
 
 		return is_string( $text ) ? $text : '';
 	}
 
-	private function translate_text( $text ) {
-		$text = (string) $text;
-		if ( '' === trim( $text ) ) {
-			return $text;
+	private function translation_looks_complete( $source, $translated ) {
+		$source     = trim( (string) $source );
+		$translated = trim( (string) $translated );
+
+		if ( '' === $translated || $translated === $source ) {
+			return false;
 		}
 
-		$url = add_query_arg(
+		$source_words     = preg_split( '/\s+/u', $source, -1, PREG_SPLIT_NO_EMPTY );
+		$translated_words = preg_split( '/\s+/u', $translated, -1, PREG_SPLIT_NO_EMPTY );
+		$source_count     = is_array( $source_words ) ? count( $source_words ) : 0;
+		$translated_count = is_array( $translated_words ) ? count( $translated_words ) : 0;
+
+		if ( $source_count >= 4 && $translated_count < max( 2, (int) ceil( $source_count * 0.5 ) ) ) {
+			return false;
+		}
+
+		if ( strlen( $source ) >= 20 && strlen( $translated ) < (int) floor( strlen( $source ) * 0.35 ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	private function google_translate( $text ) {
+		$query_text = preg_replace( '/\s+&\s+/u', ' and ', (string) $text );
+		$url        = add_query_arg(
 			array(
 				'client' => 'gtx',
 				'sl'     => 'en',
 				'tl'     => 'fr',
 				'dt'     => 't',
-				'q'      => $text,
+				'q'      => $query_text,
 			),
 			'https://translate.googleapis.com/translate_a/single'
 		);
@@ -228,22 +252,26 @@ class JCS_REST {
 			)
 		);
 
-		if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
-			$json = json_decode( wp_remote_retrieve_body( $response ), true );
-			if ( is_array( $json ) && ! empty( $json[0] ) ) {
-				$out = '';
-				foreach ( $json[0] as $part ) {
-					if ( is_array( $part ) && isset( $part[0] ) ) {
-						$out .= $part[0];
-					}
-				}
-				$out = $this->normalize_translation_output( $out );
-				if ( '' !== trim( $out ) && $out !== $text ) {
-					return $out;
-				}
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return '';
+		}
+
+		$json = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $json ) || empty( $json[0] ) ) {
+			return '';
+		}
+
+		$out = '';
+		foreach ( $json[0] as $part ) {
+			if ( is_array( $part ) && isset( $part[0] ) ) {
+				$out .= $part[0];
 			}
 		}
 
+		return $this->normalize_translation_output( $out );
+	}
+
+	private function fallback_translate( $text ) {
 		$fallback_url = add_query_arg(
 			array(
 				'q'        => $text,
@@ -261,22 +289,38 @@ class JCS_REST {
 			)
 		);
 
-		if ( ! is_wp_error( $fallback ) && 200 === wp_remote_retrieve_response_code( $fallback ) ) {
-			$json = json_decode( wp_remote_retrieve_body( $fallback ), true );
-			$out  = isset( $json['responseData']['translatedText'] ) ? $this->normalize_translation_output( $json['responseData']['translatedText'] ) : '';
-			if ( '' !== trim( $out ) && $out !== $text ) {
-				return $out;
-			}
+		if ( is_wp_error( $fallback ) || 200 !== wp_remote_retrieve_response_code( $fallback ) ) {
+			return '';
 		}
 
-		return new WP_Error( 'jcs_translation_failed', 'The translation service returned the original English text.' );
+		$json = json_decode( wp_remote_retrieve_body( $fallback ), true );
+		$out  = isset( $json['responseData']['translatedText'] ) ? $json['responseData']['translatedText'] : '';
+		return $this->normalize_translation_output( $out );
+	}
+
+	private function translate_text( $text ) {
+		$text = (string) $text;
+		if ( '' === trim( $text ) ) {
+			return $text;
+		}
+
+		$google = $this->google_translate( $text );
+		if ( $this->translation_looks_complete( $text, $google ) ) {
+			return $google;
+		}
+
+		$fallback = $this->fallback_translate( $text );
+		if ( $this->translation_looks_complete( $text, $fallback ) ) {
+			return $fallback;
+		}
+
+		return new WP_Error( 'jcs_translation_failed', 'The translation service returned incomplete or invalid French text.' );
 	}
 
 	/**
-	 * Translate each visual line independently and then reassemble the field
-	 * using the exact same newline separators. This prevents translation APIs
-	 * from truncating or merging multi-line headings. English source data is
-	 * never modified by this function.
+	 * Translate each manual visual line independently, while leaving the saved
+	 * English source untouched. Normal wrapped text without a manual newline is
+	 * translated as one complete phrase.
 	 */
 	private function translate_preserving_lines( $text ) {
 		$text = (string) $text;
@@ -330,7 +374,7 @@ class JCS_REST {
 				if ( is_wp_error( $translated ) ) {
 					$failures[] = 'Banner ' . ( $slide_index + 1 ) . ': ' . $key;
 				} else {
-					$slide[ $key ] = $translated;
+					$slide[ $key ] = $this->normalize_translation_output( $translated );
 				}
 			}
 		}
