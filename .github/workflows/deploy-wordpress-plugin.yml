@@ -1,0 +1,35 @@
+name: Deploy Code Studio to WordPress
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'justinnovate-code-studio/**'
+      - '.github/workflows/deploy-wordpress-plugin.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: code-studio-wordpress-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy plugin files over FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./justinnovate-code-studio/
+          server-dir: ${{ secrets.FTP_PLUGIN_DIR }}
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
