@@ -64,7 +64,8 @@ class JCS_Editor {
 		if ( ! $post || JCS_CPT::POST_TYPE !== $post->post_type ) {
 			wp_die( esc_html__( 'Banner not found.', 'jcs' ) );
 		}
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		$can_edit = $frontend ? JCS_Frontend::instance()->has_access() : current_user_can( 'edit_post', $post_id );
+		if ( ! $can_edit ) {
 			wp_die( esc_html__( 'You do not have permission to edit this.', 'jcs' ) );
 		}
 

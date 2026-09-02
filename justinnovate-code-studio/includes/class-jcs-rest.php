@@ -79,10 +79,9 @@ class JCS_REST {
 	}
 
 	public function can_edit( $request ) {
-		$id = (int) $request['id'];
-		if ( $id ) {
-			return current_user_can( 'edit_post', $id );
-		}
+		if ( class_exists( 'JCS_Frontend' ) && JCS_Frontend::instance()->has_access() ) return true;
+		$id = (int) $request->get_param( 'id' );
+		if ( $id ) return current_user_can( 'edit_post', $id );
 		return current_user_can( 'edit_posts' );
 	}
 

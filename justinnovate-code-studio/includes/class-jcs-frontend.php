@@ -15,6 +15,9 @@ class JCS_Frontend {
 
 	const LEGACY_PAGE_OPTION = 'jcs_frontend_page_id';
 	const MIGRATION_OPTION   = 'jcs_standalone_route_migrated';
+	const ACCESS_HASH_OPTION = 'jcs_studio_access_password_hash';
+	const ACCESS_COOKIE      = 'jcs_studio_access';
+	const ACCESS_TTL         = 2592000; // 30 days.
 
 	public static function instance() {
 		if ( null === self::$instance ) {
@@ -67,14 +70,105 @@ class JCS_Frontend {
 		);
 	}
 
+
+	private function access_hash() {
+		return (string) get_option( self::ACCESS_HASH_OPTION, '' );
+	}
+
+	private function access_signature( $expires, $hash ) {
+		return hash_hmac( 'sha256', (string) $expires . '|' . $hash, wp_salt( 'auth' ) );
+	}
+
+	private function set_access_cookie() {
+		$hash = $this->access_hash();
+		if ( '' === $hash ) return;
+		$expires = time() + self::ACCESS_TTL;
+		$value = $expires . '.' . $this->access_signature( $expires, $hash );
+		setcookie( self::ACCESS_COOKIE, $value, array(
+			'expires'  => $expires,
+			'path'     => '/',
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		) );
+		$_COOKIE[ self::ACCESS_COOKIE ] = $value;
+	}
+
+	private function clear_access_cookie() {
+		setcookie( self::ACCESS_COOKIE, '', array(
+			'expires'  => time() - HOUR_IN_SECONDS,
+			'path'     => '/',
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		) );
+		unset( $_COOKIE[ self::ACCESS_COOKIE ] );
+	}
+
+	public function has_access() {
+		if ( current_user_can( 'edit_posts' ) ) return true;
+		$hash = $this->access_hash();
+		if ( '' === $hash || empty( $_COOKIE[ self::ACCESS_COOKIE ] ) ) return false;
+		$parts = explode( '.', (string) wp_unslash( $_COOKIE[ self::ACCESS_COOKIE ] ), 2 );
+		if ( 2 !== count( $parts ) || ! ctype_digit( $parts[0] ) ) return false;
+		$expires = (int) $parts[0];
+		if ( $expires < time() ) return false;
+		return hash_equals( $this->access_signature( $expires, $hash ), (string) $parts[1] );
+	}
+
 	private function require_access() {
-		if ( ! is_user_logged_in() ) {
-			auth_redirect();
+		if ( isset( $_GET['jcs_logout'] ) ) {
+			$this->clear_access_cookie();
+			wp_safe_redirect( $this->dashboard_url() );
 			exit;
 		}
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'You do not have permission to use Code Studio.', 'jcs' ) );
+		if ( $this->has_access() ) return;
+
+		$error = '';
+		if ( 'POST' === strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : '' )
+			&& isset( $_POST['jcs_action'] )
+			&& 'access_login' === sanitize_key( wp_unslash( $_POST['jcs_action'] ) ) ) {
+			$password = isset( $_POST['jcs_password'] ) ? (string) wp_unslash( $_POST['jcs_password'] ) : '';
+			$hash = $this->access_hash();
+			if ( '' !== $hash && wp_check_password( $password, $hash ) ) {
+				$this->set_access_cookie();
+				wp_safe_redirect( $this->dashboard_url() );
+				exit;
+			}
+			$error = 'Incorrect Code Studio password.';
 		}
+		$this->render_access_login( $error );
+		exit;
+	}
+
+	private function render_access_login( $error = '' ) {
+		$configured = '' !== $this->access_hash();
+		nocache_headers();
+		status_header( 200 );
+		?>
+<!doctype html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex,nofollow,noarchive">
+	<title>Code Studio Access</title>
+	<style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f6f8;color:#17191d}body{min-height:100vh;display:grid;place-items:center;padding:24px}.jcs-login{width:min(430px,100%);background:#fff;border:1px solid #e3e6eb;border-radius:16px;padding:34px;box-shadow:0 18px 50px rgba(17,24,39,.1)}.brand{font-size:12px;letter-spacing:.18em;font-weight:800;color:#3157DF}.jcs-login h1{margin:8px 0 8px;font-size:30px}.jcs-login p{margin:0 0 22px;color:#68707c;line-height:1.5}.jcs-login label{display:block;font-weight:700;font-size:13px;margin-bottom:7px}.jcs-login input{width:100%;height:46px;border:1px solid #cfd4dc;border-radius:9px;padding:0 13px;font-size:16px}.jcs-login button{width:100%;height:46px;margin-top:14px;border:0;border-radius:9px;background:#3157DF;color:#fff;font-weight:800;font-size:14px;cursor:pointer}.error{background:#fff1f0;color:#b42318;border:1px solid #ffd5d2;padding:10px 12px;border-radius:8px;margin-bottom:16px;font-size:13px}.setup{background:#fff8e6;color:#7a4b00;border:1px solid #f4d88a;padding:12px;border-radius:8px;font-size:13px;line-height:1.45}</style>
+</head>
+<body>
+	<div class="jcs-login">
+		<div class="brand">JUSTINNOVATE</div><h1>Code Studio</h1>
+		<?php if ( $configured ) : ?>
+			<p>Enter the Code Studio password to continue. No WordPress account is required.</p>
+			<?php if ( $error ) : ?><div class="error"><?php echo esc_html( $error ); ?></div><?php endif; ?>
+			<form method="post" action="<?php echo esc_url( $this->dashboard_url() ); ?>"><input type="hidden" name="jcs_action" value="access_login"><label for="jcs-password">Password</label><input id="jcs-password" name="jcs_password" type="password" autocomplete="current-password" required autofocus><button type="submit">Enter Studio</button></form>
+		<?php else : ?>
+			<div class="setup">A shared Studio password has not been set yet. Sign in to WordPress once as an administrator, open <strong>/code-studio/</strong>, and set the shared password there. Everyone else will then use only this Code Studio login.</div>
+		<?php endif; ?>
+	</div>
+</body>
+</html>
+		<?php
 	}
 
 	/**
@@ -128,6 +222,16 @@ class JCS_Frontend {
 			return;
 		}
 
+		if ( 'set_access_password' === $action ) {
+			if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Not allowed.', 'jcs' ) );
+			check_admin_referer( 'jcs_set_access_password', 'jcs_nonce' );
+			$password = isset( $_POST['access_password'] ) ? (string) wp_unslash( $_POST['access_password'] ) : '';
+			if ( strlen( $password ) < 8 ) wp_die( esc_html__( 'Use at least 8 characters for the Code Studio password.', 'jcs' ) );
+			update_option( self::ACCESS_HASH_OPTION, wp_hash_password( $password ), false );
+			wp_safe_redirect( add_query_arg( 'password_saved', '1', $this->dashboard_url() ) );
+			exit;
+		}
+
 		if ( 'create' === $action ) {
 			check_admin_referer( 'jcs_front_create', 'jcs_nonce' );
 			$preset_id = isset( $_POST['preset_id'] ) ? absint( $_POST['preset_id'] ) : 0;
@@ -155,7 +259,7 @@ class JCS_Frontend {
 
 		if ( 'duplicate' === $action ) {
 			check_admin_referer( 'jcs_front_duplicate_' . $id, 'jcs_nonce' );
-			if ( ! current_user_can( 'edit_post', $id ) ) {
+			if ( ! $this->has_access() ) {
 				wp_die( esc_html__( 'Not allowed.', 'jcs' ) );
 			}
 			$new = wp_insert_post(
@@ -181,7 +285,7 @@ class JCS_Frontend {
 
 		if ( 'delete' === $action ) {
 			check_admin_referer( 'jcs_front_delete_' . $id, 'jcs_nonce' );
-			if ( ! current_user_can( 'delete_post', $id ) ) {
+			if ( ! $this->has_access() ) {
 				wp_die( esc_html__( 'Not allowed.', 'jcs' ) );
 			}
 			wp_trash_post( $id );
@@ -245,7 +349,17 @@ class JCS_Frontend {
 					<button type="submit">+ New Banner</button>
 				</form>
 			</nav>
-			<div class="jcs-side-bottom">Signed in as <?php echo esc_html( $user->display_name ); ?><br><a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">Log out</a></div>
+			<?php if ( current_user_can( 'manage_options' ) ) : ?>
+			<div style="margin-top:auto;padding:16px 10px 8px;border-top:1px solid rgba(255,255,255,.12)">
+				<form method="post" action="<?php echo esc_url( $this->dashboard_url() ); ?>">
+					<input type="hidden" name="jcs_action" value="set_access_password"><?php wp_nonce_field( 'jcs_set_access_password', 'jcs_nonce' ); ?>
+					<label style="display:block;font-size:11px;color:#9ca3af;margin-bottom:6px">Shared Studio password</label>
+					<input name="access_password" type="password" minlength="8" autocomplete="new-password" placeholder="Set / change password" style="width:100%;padding:9px;border:0;border-radius:7px;margin-bottom:7px">
+					<button type="submit" style="width:100%;padding:9px;border:0;border-radius:7px;background:#374151;color:#fff;font-weight:700;cursor:pointer">Save access password</button>
+				</form>
+			</div>
+			<?php endif; ?>
+			<div class="jcs-side-bottom"><?php if ( is_user_logged_in() ) : ?>Signed in as <?php echo esc_html( $user->display_name ); ?><br><a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">WordPress log out</a><?php else : ?>Code Studio access<br><a href="<?php echo esc_url( add_query_arg( 'jcs_logout', '1', $this->dashboard_url() ) ); ?>">Log out</a><?php endif; ?></div>
 		</aside>
 
 		<main class="jcs-main">
