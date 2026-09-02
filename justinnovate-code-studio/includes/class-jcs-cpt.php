@@ -101,7 +101,6 @@ class JCS_CPT {
 		$repaired = self::repair_broken_unicode_json( $raw );
 		$decoded  = json_decode( $repaired, true );
 		if ( is_array( $decoded ) ) {
-			// Heal legacy corrupted data the first time it is successfully read.
 			update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $decoded ) ) );
 			return $decoded;
 		}
@@ -112,8 +111,6 @@ class JCS_CPT {
 	public static function save_data( $post_id, array $data, $lang = 'en' ) {
 		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
 
-		// update_post_meta() unslashes values before storing them. Slash the JSON
-		// first so Unicode escape sequences such as \\u00e9 survive intact.
 		return update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $data ) ) );
 	}
 
