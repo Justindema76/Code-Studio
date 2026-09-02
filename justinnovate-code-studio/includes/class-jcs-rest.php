@@ -28,14 +28,6 @@ class JCS_REST {
 		add_filter( 'rest_authentication_errors', array( $this, 'allow_shared_studio_session' ), 110 );
 	}
 
-	/**
-	 * WordPress validates X-WP-Nonce before route permission callbacks run.
-	 * That nonce belongs to a WordPress login, while Code Studio shared-password
-	 * users are intentionally not WordPress users. If the request is one of our
-	 * own jcs/v1 endpoints and the secure Studio access cookie is valid, clear
-	 * only the WordPress cookie-nonce authentication error so our normal route
-	 * permission callback can authorize the request.
-	 */
 	public function allow_shared_studio_session( $result ) {
 		if ( ! $this->is_jcs_rest_request() ) {
 			return $result;
@@ -187,6 +179,29 @@ class JCS_REST {
 		return 'fr' === strtolower( (string) $request->get_param( 'lang' ) ) ? 'fr' : 'en';
 	}
 
+	/**
+	 * Keep translated text as real UTF-8. This deliberately does not collapse
+	 * or invent spaces; it only decodes HTML entities, replaces NBSP with a
+	 * normal space, validates UTF-8, and repairs legacy literal u00xx markers
+	 * if a translation service ever returns one.
+	 */
+	private function normalize_translation_output( $text ) {
+		$text = html_entity_decode( (string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$text = str_replace( "\xC2\xA0", ' ', $text );
+		$text = wp_check_invalid_utf8( $text, true );
+
+		$text = preg_replace_callback(
+			'/(?<!\\\\)u([0-9a-fA-F]{4})/',
+			static function ( $matches ) {
+				$decoded = json_decode( '"\\u' . $matches[1] . '"' );
+				return is_string( $decoded ) ? $decoded : $matches[0];
+			},
+			$text
+		);
+
+		return is_string( $text ) ? $text : '';
+	}
+
 	private function translate_text( $text ) {
 		$text = (string) $text;
 		if ( '' === trim( $text ) ) {
@@ -222,6 +237,7 @@ class JCS_REST {
 						$out .= $part[0];
 					}
 				}
+				$out = $this->normalize_translation_output( $out );
 				if ( '' !== trim( $out ) && $out !== $text ) {
 					return $out;
 				}
@@ -247,9 +263,7 @@ class JCS_REST {
 
 		if ( ! is_wp_error( $fallback ) && 200 === wp_remote_retrieve_response_code( $fallback ) ) {
 			$json = json_decode( wp_remote_retrieve_body( $fallback ), true );
-			$out  = isset( $json['responseData']['translatedText'] )
-				? html_entity_decode( (string) $json['responseData']['translatedText'], ENT_QUOTES | ENT_HTML5, 'UTF-8' )
-				: '';
+			$out  = isset( $json['responseData']['translatedText'] ) ? $this->normalize_translation_output( $json['responseData']['translatedText'] ) : '';
 			if ( '' !== trim( $out ) && $out !== $text ) {
 				return $out;
 			}
