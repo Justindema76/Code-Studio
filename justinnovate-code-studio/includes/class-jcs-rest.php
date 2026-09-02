@@ -272,6 +272,38 @@ class JCS_REST {
 		return new WP_Error( 'jcs_translation_failed', 'The translation service returned the original English text.' );
 	}
 
+	/**
+	 * Translate each visual line independently and then reassemble the field
+	 * using the exact same newline separators. This prevents translation APIs
+	 * from truncating or merging multi-line headings. English source data is
+	 * never modified by this function.
+	 */
+	private function translate_preserving_lines( $text ) {
+		$text = (string) $text;
+		if ( false === strpos( $text, "\n" ) && false === strpos( $text, "\r" ) ) {
+			return $this->translate_text( $text );
+		}
+
+		$normalized = str_replace( array( "\r\n", "\r" ), "\n", $text );
+		$lines      = explode( "\n", $normalized );
+		$out        = array();
+
+		foreach ( $lines as $line ) {
+			if ( '' === trim( $line ) ) {
+				$out[] = $line;
+				continue;
+			}
+
+			$translated = $this->translate_text( $line );
+			if ( is_wp_error( $translated ) ) {
+				return $translated;
+			}
+			$out[] = $translated;
+		}
+
+		return implode( "\n", $out );
+	}
+
 	public function translate_element( WP_REST_Request $request ) {
 		$id = (int) $request['id'];
 
@@ -294,7 +326,7 @@ class JCS_REST {
 					continue;
 				}
 
-				$translated = $this->translate_text( $slide[ $key ] );
+				$translated = $this->translate_preserving_lines( $slide[ $key ] );
 				if ( is_wp_error( $translated ) ) {
 					$failures[] = 'Banner ' . ( $slide_index + 1 ) . ': ' . $key;
 				} else {
