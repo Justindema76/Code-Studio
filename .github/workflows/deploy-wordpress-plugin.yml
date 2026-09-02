@@ -8,6 +8,9 @@ on:
       - '.github/workflows/deploy-wordpress-plugin.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: code-studio-wordpress-production
   cancel-in-progress: true
@@ -18,6 +21,64 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore French translation handler at source
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('justinnovate-code-studio/editor/js/editor.js')
+          s=p.read_text()
+          marker="  // ---------- title, save, unload guard ----------\n"
+          code="""  // ---------- French translation ----------
+  var translateBtn = el('jcsAutoTranslate');
+  if(translateBtn){
+    translateBtn.onclick = function(){
+      var status = el('jcsStatus');
+      translateBtn.disabled = true;
+      status.textContent = 'Translating English to French...';
+      fetch(DATA.translateUrl, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': DATA.nonce },
+        body: JSON.stringify({ data: slides })
+      }).then(function(r){
+        return r.text().then(function(text){
+          var parsed; try { parsed=JSON.parse(text); } catch(e) { parsed=null; }
+          if(!r.ok) throw new Error((parsed && parsed.message) ? parsed.message : ('HTTP '+r.status));
+          return parsed;
+        });
+      }).then(function(result){
+        if(!result || !Array.isArray(result.data)) throw new Error('Translation service returned no banner data.');
+        slides=result.data.map(function(slide){ return Object.assign(defaults(),slide); });
+        active=Math.min(active,slides.length-1);
+        loadFields(); renderAll(); markDirty();
+        status.textContent='French translation ready - click Save';
+        translateBtn.disabled=false;
+      }).catch(function(err){
+        status.textContent='Translation failed: '+err.message;
+        translateBtn.disabled=false;
+      });
+    };
+  }
+
+"""
+          if 'translateBtn.onclick' not in s:
+            if marker not in s: raise SystemExit('editor marker not found')
+            s=s.replace(marker,code+marker,1)
+            p.write_text(s)
+          m=Path('justinnovate-code-studio/justinnovate-code-studio.php')
+          t=m.read_text()
+          t=re.sub(r'\* Version: [0-9.]+','* Version: 0.3.24',t,count=1)
+          t=re.sub(r"define\( 'JCS_VERSION', '[0-9.]+' \);","define( 'JCS_VERSION', '0.3.24' );",t,count=1)
+          m.write_text(t)
+          PY
+          node --check justinnovate-code-studio/editor/js/editor.js
+          php -l justinnovate-code-studio/justinnovate-code-studio.php
+          git config user.name "Justin DeMatteis"
+          git config user.email "160768253+Justindema76@users.noreply.github.com"
+          git add justinnovate-code-studio/editor/js/editor.js justinnovate-code-studio/justinnovate-code-studio.php
+          if ! git diff --cached --quiet; then git commit -m "Restore French translation action" && git push; fi
 
       - name: Deploy plugin files over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -33,5 +94,3 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
-
-# Redeploy marker: standalone Code Studio password access
