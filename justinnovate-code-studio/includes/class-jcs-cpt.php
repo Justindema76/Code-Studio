@@ -72,6 +72,16 @@ class JCS_CPT {
 	}
 
 	/**
+	 * Repair Unicode escapes that were previously stored without the leading
+	 * backslash (for example "u00e9" instead of "\\u00e9"). This only runs
+	 * when the raw JSON cannot be decoded as-is, so valid text is left alone.
+	 */
+	private static function repair_broken_unicode_json( $raw ) {
+		$repaired = preg_replace( '/(?<!\\\\)u([0-9a-fA-F]{4})/', '\\\\u$1', $raw );
+		return is_string( $repaired ) ? $repaired : $raw;
+	}
+
+	/**
 	 * The element's config, stored as a single JSON blob. For a banner this
 	 * is the `slides` array — same shape the front-end JS canvas already
 	 * works with, so the editor doesn't need a translation layer.
@@ -82,13 +92,29 @@ class JCS_CPT {
 		if ( empty( $raw ) ) {
 			return array();
 		}
+
 		$decoded = json_decode( $raw, true );
-		return is_array( $decoded ) ? $decoded : array();
+		if ( is_array( $decoded ) ) {
+			return $decoded;
+		}
+
+		$repaired = self::repair_broken_unicode_json( $raw );
+		$decoded  = json_decode( $repaired, true );
+		if ( is_array( $decoded ) ) {
+			// Heal legacy corrupted data the first time it is successfully read.
+			update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $decoded ) ) );
+			return $decoded;
+		}
+
+		return array();
 	}
 
 	public static function save_data( $post_id, array $data, $lang = 'en' ) {
 		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
-		return update_post_meta( $post_id, $key, wp_json_encode( $data ) );
+
+		// update_post_meta() unslashes values before storing them. Slash the JSON
+		// first so Unicode escape sequences such as \\u00e9 survive intact.
+		return update_post_meta( $post_id, $key, wp_slash( wp_json_encode( $data ) ) );
 	}
 
 	public static function get_element_type( $post_id ) {
