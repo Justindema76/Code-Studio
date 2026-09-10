@@ -691,16 +691,12 @@
     canvas.style.flex = '0 0 '+desiredW+'px';
     canvas.style.background = 'transparent';
 
-    var stage = el('jcsStage');
-    var availableW = Math.max(1, stage.clientWidth - 40);
-    var availableH = Math.max(1, stage.clientHeight - 40);
-    // Scale the whole real viewport only so it fits on screen. Its internal layout remains exact.
-    var scale = Math.min(1, availableW / desiredW, availableH / desiredH);
+    // Show the real output dimensions. Do not scale the canvas to fit the editor.
+    canvas.style.transform = 'none';
     canvas.style.transformOrigin = 'top left';
-    canvas.style.transform = 'scale('+scale+')';
     var wrap = el('jcsScaleWrap');
-    wrap.style.width = (desiredW*scale)+'px';
-    wrap.style.height = (desiredH*scale)+'px';
+    wrap.style.width = desiredW+'px';
+    wrap.style.height = desiredH+'px';
 
     var frame = el('jcsCanvasFrame');
     if(!frame){

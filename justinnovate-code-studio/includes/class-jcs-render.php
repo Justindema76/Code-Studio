@@ -328,7 +328,8 @@ class JCS_Render {
 
 		$is_fixed      = 'fixed' === $s['desktopAttachment'];
 		$desk_size = 'width' === $s['desktopFit'] ? '100% auto' : ( 'contain' === $s['desktopFit'] ? 'contain' : ( 'custom' === $s['desktopFit'] ? ( (int) $s['desktopZoom'] . '% auto' ) : 'cover' ) );
-		$picture_style = 'background-image:url(\'' . esc_url( $s['desktopImage'] ) . '\');background-size:' . $desk_size . ';background-position:' . (int) $s['desktopX'] . '% ' . (int) $s['desktopY'] . '%;background-attachment:' . ( $is_fixed ? 'fixed' : 'scroll' ) . ';background-repeat:no-repeat;--jcs-mobile-bg:url(\'' . esc_url( $s['mobileImage'] ? $s['mobileImage'] : $s['desktopImage'] ) . '\');--jcs-mobile-bg-size:' . (int) $s['mobileWidth'] . '% auto;--jcs-mobile-bg-pos:' . (int) $s['mobileX'] . '% ' . (int) $s['mobileY'] . '%;';
+		$mobile_bg_size = ! empty( $s['mobileImage'] ) ? ( (int) $s['mobileWidth'] . '% auto' ) : 'contain';
+		$picture_style = 'background-image:url(\'' . esc_url( $s['desktopImage'] ) . '\');background-size:' . $desk_size . ';background-position:' . (int) $s['desktopX'] . '% ' . (int) $s['desktopY'] . '%;background-attachment:' . ( $is_fixed ? 'fixed' : 'scroll' ) . ';background-repeat:no-repeat;--jcs-mobile-bg:url(\'' . esc_url( $s['mobileImage'] ? $s['mobileImage'] : $s['desktopImage'] ) . '\');--jcs-mobile-bg-size:' . $mobile_bg_size . ';--jcs-mobile-bg-pos:' . (int) $s['mobileX'] . '% ' . (int) $s['mobileY'] . '%;';
 
 		$overlay_css = '';
 		if ( 'color' === $s['overlayType'] ) {
