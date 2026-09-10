@@ -39,8 +39,8 @@ class JCS_Access {
 				self::ROLE,
 				__( 'Code Studio User', 'jcs' ),
 				array(
-					'read'             => true,
-					self::CAP          => true,
+					'read'    => true,
+					self::CAP => true,
 				)
 			);
 		} elseif ( ! $role->has_cap( self::CAP ) ) {
@@ -85,7 +85,9 @@ class JCS_Access {
 	}
 
 	public function grant_studio_caps( $allcaps, $caps, $args, $user ) {
-		if ( ! $user instanceof WP_User || ! $user->has_cap( self::CAP ) || ! $this->is_studio_context() ) {
+		// Never call $user->has_cap() from inside user_has_cap; doing so recursively
+		// invokes this same filter and can crash WordPress with a critical error.
+		if ( ! $user instanceof WP_User || empty( $allcaps[ self::CAP ] ) || ! $this->is_studio_context() ) {
 			return $allcaps;
 		}
 
