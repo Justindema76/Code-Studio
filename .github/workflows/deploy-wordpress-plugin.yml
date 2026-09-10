@@ -6,10 +6,11 @@ on:
     paths:
       - 'justinnovate-code-studio/**'
       - '.github/workflows/deploy-wordpress-plugin.yml'
+      - 'tools/fix-mobile-rendering.py'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: code-studio-wordpress-production
@@ -22,12 +23,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Apply mobile rendering source repair
+        shell: bash
+        run: |
+          python3 tools/fix-mobile-rendering.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add justinnovate-code-studio/editor/js/editor.js justinnovate-code-studio/includes/class-jcs-render.php justinnovate-code-studio/justinnovate-code-studio.php
+          if ! git diff --cached --quiet; then
+            git commit -m "Restore mobile banner rendering behavior"
+            git push
+          fi
+
       - name: Validate plugin source
         shell: bash
         run: |
           node --check justinnovate-code-studio/editor/js/editor.js
           php -l justinnovate-code-studio/justinnovate-code-studio.php
           php -l justinnovate-code-studio/includes/class-jcs-frontend.php
+          php -l justinnovate-code-studio/includes/class-jcs-render.php
 
       - name: Deploy plugin files over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
