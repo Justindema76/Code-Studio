@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Justinnovate Code Studio
  * Description: A lightweight, block-based page builder with a custom full-screen canvas editor. Starts with a Banner (hero slider) element.
- * Version: 0.3.25
+ * Version: 0.3.26
  * Author: Justin DeMatteis
  * Text Domain: jcs
  */
@@ -11,11 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'JCS_VERSION', '0.3.25' );
+define( 'JCS_VERSION', '0.3.26' );
 define( 'JCS_PLUGIN_FILE', __FILE__ );
 define( 'JCS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'JCS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
+require_once JCS_PLUGIN_DIR . 'includes/class-jcs-access.php';
 require_once JCS_PLUGIN_DIR . 'includes/class-jcs-cpt.php';
 require_once JCS_PLUGIN_DIR . 'includes/class-jcs-rest.php';
 require_once JCS_PLUGIN_DIR . 'includes/class-jcs-editor.php';
@@ -39,6 +40,7 @@ final class JCS_Plugin {
 	}
 
 	private function __construct() {
+		JCS_Access::instance();
 		JCS_CPT::instance();
 		JCS_REST::instance();
 		JCS_Editor::instance();
@@ -51,6 +53,7 @@ final class JCS_Plugin {
 
 	public function on_activate() {
 		// WordPress stores the data; Code Studio itself is a standalone front-end route.
+		JCS_Access::instance()->ensure_role();
 		JCS_CPT::instance()->register_post_type();
 		flush_rewrite_rules();
 	}
