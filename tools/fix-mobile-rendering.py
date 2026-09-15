@@ -45,6 +45,28 @@ replacements = {
 for old, new in replacements.items():
     s = s.replace(old, new)
 
+# Restore unrestricted content-block positioning. Vertical movement had been
+# accidentally capped at +/-150px while horizontal already allowed +/-1000px.
+old_vertical = "'<div class=\"jcs-range\"><label>Shift vertical</label><span id=\"fShiftYVal\"></span><input id=\"fShiftY\" type=\"range\" min=\"-150\" max=\"150\" step=\"2\"></div>' +"
+new_vertical = "'<div class=\"jcs-range\"><label>Shift vertical</label><span id=\"fShiftYVal\"></span><input id=\"fShiftY\" type=\"range\" min=\"-1000\" max=\"1000\" step=\"5\"><input id=\"fShiftYNumber\" type=\"number\" min=\"-1000\" max=\"1000\" step=\"1\" style=\"margin-top:6px;width:100%;\" aria-label=\"Exact vertical shift in pixels\"></div>' +"
+if old_vertical in s:
+    s = s.replace(old_vertical, new_vertical, 1)
+
+old_refresh = "if(el('fShiftXNumber')) el('fShiftXNumber').value=curVal('contentShiftX');"
+new_refresh = old_refresh + " if(el('fShiftYNumber')) el('fShiftYNumber').value=curVal('contentShiftY');"
+if new_refresh not in s and old_refresh in s:
+    s = s.replace(old_refresh, new_refresh, 1)
+
+old_slider_sync = "if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; renderAll();"
+new_slider_sync = "if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; if(id==='fShiftY' && el('fShiftYNumber')) el('fShiftYNumber').value=el(id).value; renderAll();"
+if new_slider_sync not in s and old_slider_sync in s:
+    s = s.replace(old_slider_sync, new_slider_sync, 1)
+
+x_number_handler = "if(el('fShiftXNumber')) el('fShiftXNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftX',v); el('fShiftX').value=v; el('fShiftXVal').textContent=v+'px'; renderAll(); });"
+y_number_handler = "if(el('fShiftYNumber')) el('fShiftYNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftY',v); el('fShiftY').value=v; el('fShiftYVal').textContent=v+'px'; renderAll(); });"
+if y_number_handler not in s and x_number_handler in s:
+    s = s.replace(x_number_handler, x_number_handler + "\n  " + y_number_handler, 1)
+
 editor.write_text(s)
 
 # Undo the fallback change from the previous attempted repair; preserve existing
