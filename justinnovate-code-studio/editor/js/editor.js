@@ -157,7 +157,7 @@
             '<label>Vertical alignment</label><select id="fAlignY"><option value="center">Center</option><option value="flex-start">Top</option><option value="flex-end">Bottom</option></select>' +
             '<div class="jcs-range"><label>Edge padding</label><span id="fPaddingXVal"></span><input id="fPaddingX" type="range" min="16" max="140" step="2"></div>' +
             '<div class="jcs-range"><label>Shift horizontal</label><span id="fShiftXVal"></span><input id="fShiftX" type="range" min="-1000" max="1000" step="5"><input id="fShiftXNumber" type="number" min="-1000" max="1000" step="1" style="margin-top:6px;width:100%;" aria-label="Exact horizontal shift in pixels"></div>' +
-            '<div class="jcs-range"><label>Shift vertical</label><span id="fShiftYVal"></span><input id="fShiftY" type="range" min="-150" max="150" step="2"></div>' +
+            '<div class="jcs-range"><label>Shift vertical</label><span id="fShiftYVal"></span><input id="fShiftY" type="range" min="-1000" max="1000" step="5"><input id="fShiftYNumber" type="number" min="-1000" max="1000" step="1" style="margin-top:6px;width:100%;" aria-label="Exact vertical shift in pixels"></div>' +
             '<div class="jcs-section-label">Content background</div>' +
             '<div class="jcs-checkbox-row"><input id="fContentBgEnabled" type="checkbox"><label for="fContentBgEnabled">Show background panel</label></div>' +
             '<div id="jcsContentBgDetail">' +
@@ -509,7 +509,7 @@
     el('jcsCopyLayout').textContent = mode==='desktop' ? 'Copy from Mobile layout' : 'Copy from Desktop layout';
     document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){ b.classList.toggle('active', b.dataset.value === curVal('contentSide')); });
     el('fAlignY').value = curVal('contentAlign');
-    Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(LAYOUT_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fShiftXNumber')) el('fShiftXNumber').value=curVal('contentShiftX');
+    Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(LAYOUT_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fShiftXNumber')) el('fShiftXNumber').value=curVal('contentShiftX'); if(el('fShiftYNumber')) el('fShiftYNumber').value=curVal('contentShiftY');
   }
   document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){
     b.addEventListener('click', function(){
@@ -520,10 +520,11 @@
   });
   el('fAlignY').addEventListener('change', function(){ setVal('contentAlign', el('fAlignY').value); renderAll(); });
   Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){
-    el(id).addEventListener('input', function(){ setVal(LAYOUT_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; renderAll(); });
+    el(id).addEventListener('input', function(){ setVal(LAYOUT_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; if(id==='fShiftY' && el('fShiftYNumber')) el('fShiftYNumber').value=el(id).value; renderAll(); });
   });
 
   if(el('fShiftXNumber')) el('fShiftXNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftX',v); el('fShiftX').value=v; el('fShiftXVal').textContent=v+'px'; renderAll(); });
+  if(el('fShiftYNumber')) el('fShiftYNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftY',v); el('fShiftY').value=v; el('fShiftYVal').textContent=v+'px'; renderAll(); });
 
   var CONTENTBG_PX_FIELDS = { fContentBgPadding:'contentBgPadding', fContentBgRadius:'contentBgRadius', fContentBgShadowBlur:'contentBgShadowBlur', fContentBgShadowY:'contentBgShadowY' };
   var CONTENTBG_COLOR_FIELDS = { fContentBgColor:'contentBgColor', fContentBgShadowColor:'contentBgShadowColor' };
