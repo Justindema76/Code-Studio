@@ -128,7 +128,7 @@ class JCS_CPT {
 	 * works with, so the editor doesn't need a translation layer.
 	 */
 	public static function get_data( $post_id, $lang = 'en' ) {
-		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
+		$key = ( 'fr' === $lang ) ? '_jcs_data_fr' : ( ( 'us' === $lang ) ? '_jcs_data_us' : '_jcs_data' );
 		$raw = get_post_meta( $post_id, $key, true );
 		if ( empty( $raw ) ) {
 			return array();
@@ -154,7 +154,7 @@ class JCS_CPT {
 	}
 
 	public static function save_data( $post_id, array $data, $lang = 'en' ) {
-		$key  = ( 'fr' === $lang ) ? '_jcs_data_fr' : '_jcs_data';
+		$key  = ( 'fr' === $lang ) ? '_jcs_data_fr' : ( ( 'us' === $lang ) ? '_jcs_data_us' : '_jcs_data' );
 		$json = self::encode_data( $data );
 
 		if ( ! is_string( $json ) ) {
