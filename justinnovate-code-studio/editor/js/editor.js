@@ -34,9 +34,9 @@
           '<span class="jcs-language-pill">'+(DATA.languageLabel||'English')+'</span>' +
         '</div>' +
         '<div class="jcs-topbar-actions">' +
-          '<a class="jcs-btn secondary" href="'+(DATA.englishUrl||'#')+'">EN</a>' +
-          '<a class="jcs-btn secondary" href="'+(DATA.frenchUrl||'#')+'">FR</a>' +
-          '<a class="jcs-btn secondary" href="'+(DATA.usaUrl||'#')+'">USA</a>' +
+          '<a class="jcs-btn secondary'+(DATA.language==='en'?' active':'')+'" href="'+(DATA.englishUrl||'#')+'" style="'+(DATA.language==='en'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">EN</a>' +
+          '<a class="jcs-btn secondary'+(DATA.language==='fr'?' active':'')+'" href="'+(DATA.frenchUrl||'#')+'" style="'+(DATA.language==='fr'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">FR</a>' +
+          '<a class="jcs-btn secondary'+(DATA.language==='us'?' active':'')+'" href="'+(DATA.usaUrl||'#')+'" style="'+(DATA.language==='us'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">USA</a>' +
           ((DATA.language==='fr') ? '<button class="jcs-btn secondary" id="jcsAutoTranslate">Translate EN → FR</button>' : '') +
           '<button class="jcs-btn secondary" id="jcsLivePreview">Live preview</button>' +
           '<button class="jcs-btn secondary" id="jcsNew">New blank</button>' +
