@@ -89,7 +89,7 @@
         '</main>' +
         '<aside class="jcs-side">' +
           '<div class="jcs-side-head"><strong>Banners <span class="jcs-mode-badge" id="jcsModeBadge"></span></strong>' +
-            '<div><button class="jcs-btn secondary" id="jcsDuplicate">Duplicate</button> <button class="jcs-btn primary" id="jcsAdd">Add</button></div>' +
+            '<div class="jcs-slide-actions"><button class="jcs-btn secondary panel" id="jcsDuplicate" type="button">Duplicate slide</button> <button class="jcs-btn primary" id="jcsAdd" type="button">Add</button></div>' +
           '</div>' +
           '<div class="jcs-tabs-slides" id="jcsSlideTabs"></div>' +
           '<div class="jcs-tabbar" id="jcsTabbar">' +
