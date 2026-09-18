@@ -36,6 +36,7 @@
         '<div class="jcs-topbar-actions">' +
           '<a class="jcs-btn secondary" href="'+(DATA.englishUrl||'#')+'">EN</a>' +
           '<a class="jcs-btn secondary" href="'+(DATA.frenchUrl||'#')+'">FR</a>' +
+          '<a class="jcs-btn secondary" href="'+(DATA.usaUrl||'#')+'">USA</a>' +
           ((DATA.language==='fr') ? '<button class="jcs-btn secondary" id="jcsAutoTranslate">Translate EN → FR</button>' : '') +
           '<button class="jcs-btn secondary" id="jcsLivePreview">Live preview</button>' +
           '<button class="jcs-btn secondary" id="jcsNew">New blank</button>' +
