@@ -176,7 +176,8 @@ class JCS_REST {
 	}
 
 	private function language( WP_REST_Request $request ) {
-		return 'fr' === strtolower( (string) $request->get_param( 'lang' ) ) ? 'fr' : 'en';
+		$lang = strtolower( (string) $request->get_param( 'lang' ) );
+		return in_array( $lang, array( 'fr', 'us' ), true ) ? $lang : 'en';
 	}
 
 	/**
