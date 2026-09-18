@@ -72,7 +72,14 @@ class JCS_Editor {
 
 		$data = JCS_CPT::get_data( $post_id, $lang );
 		$studio_settings = JCS_Settings::get();
-		if ( in_array( $lang, array( 'fr', 'us' ), true ) && empty( $data ) ) { $data = JCS_CPT::get_data( $post_id, 'en' ); }
+		if ( 'fr' === $lang && empty( $data ) ) { $data = JCS_CPT::get_data( $post_id, 'en' ); }
+		if ( 'us' === $lang && empty( $data ) ) {
+			$data = JCS_CPT::get_data( $post_id, 'en' );
+			// Seed USA once so it immediately becomes independent from English.
+			if ( ! empty( $data ) ) {
+				JCS_CPT::save_data( $post_id, $data, 'us' );
+			}
+		}
 
 		wp_enqueue_style( 'jcs-editor', JCS_PLUGIN_URL . 'editor/css/editor.css', array(), JCS_VERSION );
 		$font_url = JCS_Settings::google_fonts_url();
