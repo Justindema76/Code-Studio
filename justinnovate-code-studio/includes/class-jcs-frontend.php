@@ -61,7 +61,7 @@ class JCS_Frontend {
 		return add_query_arg(
 			array(
 				'jcs_edit' => absint( $post_id ),
-				'lang'     => ( 'fr' === $lang ? 'fr' : 'en' ),
+				'lang'     => in_array( $lang, array( 'fr', 'us' ), true ) ? $lang : 'en',
 			),
 			$this->dashboard_url()
 		);
