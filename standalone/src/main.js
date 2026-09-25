@@ -42,23 +42,36 @@ function login() {
   app.replaceChildren()
   const status = el('p', { class: 'status', role: 'status' })
   const email = el('input', { type: 'email', required: '', autocomplete: 'username', placeholder: 'Email' })
-  const password = el('input', { type: 'password', required: '', autocomplete: 'current-password', placeholder: 'Password' })
-  const button = el('button', { type: 'submit', text: 'Sign in' })
+  const button = el('button', { type: 'submit', text: 'Email me a sign-in link' })
+  const pastedLink = el('input', { type: 'url', placeholder: 'Paste the email link here' })
+  const useLink = el('button', { type: 'button', class: 'secondary', text: 'Use pasted link', onclick: async () => {
+    try {
+      const link = new URL(pastedLink.value)
+      if (link.origin !== url) throw new Error('Paste the Supabase sign-in link from your email.')
+      const token_hash = link.searchParams.get('token_hash') || link.searchParams.get('token')
+      const type = link.searchParams.get('type')
+      if (!token_hash || !['magiclink', 'signup', 'email'].includes(type)) throw new Error('That email link is missing a sign-in token.')
+      check(await db.auth.verifyOtp({ token_hash, type }))
+      await start()
+    } catch (error) { message(status, error.message, true) }
+  } })
   const form = el('form', { class: 'login-card', onsubmit: async event => {
     event.preventDefault()
     button.disabled = true
-    message(status, 'Signing in…')
+    message(status, 'Sending link…')
     try {
-      check(await db.auth.signInWithPassword({ email: email.value, password: password.value }))
-      await start()
+      check(await db.auth.signInWithOtp({ email: email.value,
+        options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } }))
+      message(status, 'Check your email and click the sign-in link. No password needed.')
     } catch (error) { message(status, error.message, true) }
     finally { button.disabled = false }
   } }, [
     el('div', { class: 'eyebrow', text: 'JUSTINNOVATE' }),
     el('h1', { text: 'Code Studio' }),
-    el('p', { text: 'Your banners, in one workspace.' }),
-    el('label', { text: 'Email' }), email,
-    el('label', { text: 'Password' }), password, button, status
+    el('p', { text: 'Enter your email to get a secure sign-in link. No password needed.' }),
+    el('label', { text: 'Email' }), email, button, status,
+    el('p', { text: 'If the email link opens the old site, copy its link address and paste it here:' }),
+    pastedLink, useLink
   ])
   app.append(form)
 }
