@@ -19,19 +19,17 @@ French auto-translation is hidden until a separate translation service is connec
 
 ## Configure
 
-1. Use the **dedicated JustInnovate Supabase project**. Do not apply the migration in
-   FantasyIntel or JustConsignIN.
-2. Run `supabase/migrations/20260925140000_code_studio.sql` against that project.
-   The migration creates owner-restricted rows and an image bucket.
-3. Enable Email authentication and create/invite your user in that project's Auth
+1. The app uses the existing **JustConsignIN** Supabase project inside the
+   **JustInnovate** organization. Its Code Studio table and image bucket are
+   separate from consignment data. The migration in
+   `supabase/migrations/20260925140000_code_studio.sql` has been applied.
+2. Enable Email authentication and create/invite your user in that project's Auth
    settings. The app does not expose public sign-up.
-4. Copy `.env.example` to `.env` and enter the project's URL and **publishable**
-   key. Never use a secret or service role key in this frontend.
-5. Run `npm ci && npm run dev`. For a production build, run `npm run build`;
-   deploy the `dist/` directory to a static host with the same two build-time
-   environment values. This can be GitHub Pages (build with `--base /Code-Studio/`
-   for the repository subpath) with an Actions build, or another
-   static host. Set the Auth site's allowed redirect URL to the chosen domain.
+3. For local development copy `.env.example` to `.env` and set the same
+   project URL and publishable key. The committed `.env.production` includes
+   only the browser-safe publishable key; never use a secret/service role key.
+4. Run `npm ci && npm run dev`. GitHub Actions builds the app for
+   `/Code-Studio/` and deploys it to GitHub Pages.
 
 The standalone app uses hash routes such as `#/edit/{id}/en`, so a static host
 does not need server-side route rewrites. Keep the WordPress instance untouched
