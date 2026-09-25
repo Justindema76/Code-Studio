@@ -1,15 +1,95 @@
-import { createClient } from '@supabase/supabase-js'
 import './style.css'
 
 const app = document.querySelector('#app')
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-const db = url && key ? createClient(url, key) : null
+const STORAGE_KEY = 'code-studio-projects-v1'
+function projects() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] } }
+function persist(rows) { localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)) }
+function saveProject(row) {
+  const rows = projects()
+  const index = rows.findIndex(item => item.id === row.id)
+  if (index < 0) rows.push(row)
+  else rows[index] = row
+  persist(rows)
+  return row
+}
+function imageStore() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('code-studio-images', 1)
+    request.onupgradeneeded = () => request.result.createObjectStore('images')
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+async function storeImage(image) {
+  const database = await imageStore()
+  const id = crypto.randomUUID()
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction('images', 'readwrite')
+    transaction.objectStore('images').put(image, id)
+    transaction.oncomplete = resolve
+    transaction.onerror = () => reject(transaction.error)
+  })
+  return id
+}
+async function loadImage(id) {
+  const database = await imageStore()
+  return new Promise((resolve, reject) => {
+    const request = database.transaction('images').objectStore('images').get(id)
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
 const settings = {
   accent: '#3157DF',
   fonts: 'Oswald\nInter\nArial\nGeorgia\nImpact\nMontserrat\nRoboto\nOpen Sans\nPoppins\nLato\nBebas Neue\nAnton\nBarlow Condensed\nRoboto Condensed\nPlayfair Display\nMerriweather'
 }
 let currentUser = null
+const imageUrls = new Map()
+async function displayImages(value) {
+  if (typeof value === 'string' && value.startsWith('code-studio-image:')) {
+    const image = await loadImage(value.slice('code-studio-image:'.length))
+    if (!image) return ''
+    const objectUrl = URL.createObjectURL(image)
+    imageUrls.set(objectUrl, value)
+    return objectUrl
+  }
+  if (Array.isArray(value)) return Promise.all(value.map(displayImages))
+  if (value && typeof value === 'object') {
+    const entries = await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await displayImages(item)]))
+    return Object.fromEntries(entries)
+  }
+  return value
+}
+function savedImages(value) {
+  if (typeof value === 'string') return imageUrls.get(value) || value
+  if (Array.isArray(value)) return value.map(savedImages)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, savedImages(item)]))
+  return value
+}
+async function portableImages(value, importing = false) {
+  if (typeof value === 'string') {
+    if (!importing && value.startsWith('code-studio-image:')) {
+      const blob = await loadImage(value.slice('code-studio-image:'.length))
+      if (!blob) throw new Error('An image is missing from this browser.')
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      })
+    }
+    if (importing && /^data:image\/(png|jpeg|webp|gif);base64,/.test(value)) {
+      const blob = await fetch(value).then(response => response.blob())
+      return 'code-studio-image:' + await storeImage(blob)
+    }
+  }
+  if (Array.isArray(value)) return Promise.all(value.map(item => portableImages(item, importing)))
+  if (value && typeof value === 'object') {
+    const entries = await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await portableImages(item, importing)]))
+    return Object.fromEntries(entries)
+  }
+  return value
+}
 
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag)
@@ -38,46 +118,7 @@ function download(name, content) {
 function language(value) { return ['en', 'fr', 'us'].includes(value) ? value : 'en' }
 function editorHref(id, lang = 'en') { return '#/edit/' + encodeURIComponent(id) + '/' + language(lang) }
 
-function login() {
-  app.replaceChildren()
-  const status = el('p', { class: 'status', role: 'status' })
-  const email = el('input', { type: 'email', required: '', autocomplete: 'username', placeholder: 'Email' })
-  const button = el('button', { type: 'submit', text: 'Email me a sign-in link' })
-  const pastedLink = el('input', { type: 'url', placeholder: 'Paste the email link here' })
-  const useLink = el('button', { type: 'button', class: 'secondary', text: 'Use pasted link', onclick: async () => {
-    try {
-      const link = new URL(pastedLink.value)
-      if (link.origin !== url) throw new Error('Paste the Supabase sign-in link from your email.')
-      const token_hash = link.searchParams.get('token_hash') || link.searchParams.get('token')
-      const type = link.searchParams.get('type')
-      if (!token_hash || !['magiclink', 'signup', 'email'].includes(type)) throw new Error('That email link is missing a sign-in token.')
-      check(await db.auth.verifyOtp({ token_hash, type }))
-      await start()
-    } catch (error) { message(status, error.message, true) }
-  } })
-  const form = el('form', { class: 'login-card', onsubmit: async event => {
-    event.preventDefault()
-    button.disabled = true
-    message(status, 'Sending link…')
-    try {
-      check(await db.auth.signInWithOtp({ email: email.value,
-        options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } }))
-      message(status, 'Check your email and click the sign-in link. No password needed.')
-    } catch (error) { message(status, error.message, true) }
-    finally { button.disabled = false }
-  } }, [
-    el('div', { class: 'eyebrow', text: 'JUSTINNOVATE' }),
-    el('h1', { text: 'Code Studio' }),
-    el('p', { text: 'Enter your email to get a secure sign-in link. No password needed.' }),
-    el('label', { text: 'Email' }), email, button, status,
-    el('p', { text: 'If the email link opens the old site, copy its link address and paste it here:' }),
-    pastedLink, useLink
-  ])
-  app.append(form)
-}
-
 async function dashboard() {
-  if (!currentUser) return login()
   app.replaceChildren()
   const status = el('p', { class: 'status', role: 'status' })
   const grid = el('div', { class: 'banner-grid' })
@@ -85,13 +126,12 @@ async function dashboard() {
     el('aside', { class: 'sidebar' }, [
       el('div', { class: 'brand', text: 'CODE STUDIO' }),
       el('div', { class: 'nav-active', text: 'Banners' }),
-      el('div', { class: 'signed-in', text: currentUser.email }),
-      el('button', { class: 'secondary', text: 'Sign out', onclick: async () => { await db.auth.signOut(); currentUser = null; login() } })
+      el('div', { class: 'signed-in', text: 'Saved on this device · Download backups regularly' })
     ]),
     el('main', { class: 'content' }, [
       el('div', { class: 'heading', text: 'WORKSPACE' }),
       el('h1', { text: 'Banner projects' }),
-      el('p', { text: 'Create, edit and export desktop and mobile banners.' }),
+      el('p', { text: 'Create, edit and export desktop and mobile banners. Projects are stored on this device.' }),
       el('div', { class: 'toolbar' }, [
         el('button', { text: '+ New banner', onclick: () => createBanner(status) }),
         el('button', { class: 'secondary', text: 'Import project JSON', onclick: () => importInput.click() }),
@@ -109,12 +149,12 @@ async function dashboard() {
       for (const project of projects) {
         const en = Array.isArray(project) ? project : (project.en || project.slides || project.data)
         if (!Array.isArray(en) || !en.length) throw new Error('Expected project JSON with a nonempty slides array.')
-        check(await db.from('code_studio_banners').insert({
-          owner_id: currentUser.id,
+        saveProject({
+          id: crypto.randomUUID(), updated_at: new Date().toISOString(),
           title: String(project.title || file.name.replace(/\.json$/i, '')).slice(0, 200),
-          en, fr: Array.isArray(project.fr) ? project.fr : null,
-          us: Array.isArray(project.us) ? project.us : null
-        }))
+          en: await portableImages(en, true), fr: Array.isArray(project.fr) ? await portableImages(project.fr, true) : null,
+          us: Array.isArray(project.us) ? await portableImages(project.us, true) : null
+        })
       }
       await dashboard()
     } catch (error) { message(status, 'Import failed: ' + error.message, true) }
@@ -123,7 +163,7 @@ async function dashboard() {
   shell.append(importInput)
   app.append(shell)
   try {
-    const rows = check(await db.from('code_studio_banners').select('id,title,en,fr,us,updated_at').order('updated_at', { ascending: false }))
+    const rows = projects().sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     if (!rows.length) grid.append(el('div', { class: 'empty', text: 'No banners yet. Create one or import a project JSON backup.' }))
     for (const row of rows) {
       const actions = el('div', { class: 'actions' })
@@ -132,15 +172,13 @@ async function dashboard() {
       actions.append(
         el('button', { class: 'secondary', text: 'Duplicate', onclick: async () => {
           try {
-            check(await db.from('code_studio_banners').insert({
-              owner_id: currentUser.id, title: row.title + ' Copy', en: row.en, fr: row.fr, us: row.us
-            }))
+            saveProject({ ...row, id: crypto.randomUUID(), title: row.title + ' Copy', updated_at: new Date().toISOString() })
             await dashboard()
           } catch (error) { message(status, error.message, true) }
         } }),
         el('button', { class: 'danger', text: 'Delete', onclick: async () => {
           if (!confirm('Delete this banner project? Download a backup first if you need one.')) return
-          try { check(await db.from('code_studio_banners').delete().eq('id', row.id)); await dashboard() }
+          try { persist(projects().filter(item => item.id !== row.id)); await dashboard() }
           catch (error) { message(status, error.message, true) }
         } })
       )
@@ -156,27 +194,25 @@ async function dashboard() {
 
 async function createBanner(status) {
   try {
-    const rows = check(await db.from('code_studio_banners')
-      .insert({ owner_id: currentUser.id, title: 'New Banner', en: [] }).select('id'))
-    location.hash = editorHref(rows[0].id).slice(1)
+    const row = saveProject({ id: crypto.randomUUID(), title: 'New Banner', en: [], fr: null, us: null, updated_at: new Date().toISOString() })
+    location.hash = editorHref(row.id).slice(1)
     if (!location.hash) await route()
   } catch (error) { message(status, error.message, true) }
 }
 async function exportBackup(status) {
   try {
-    const rows = check(await db.from('code_studio_banners').select('title,en,fr,us'))
+    const rows = await portableImages(projects())
     download('code-studio-backup-' + new Date().toISOString().slice(0, 10) + '.json',
       JSON.stringify({ format: 'code-studio-backup-v1', projects: rows }, null, 2))
   } catch (error) { message(status, error.message, true) }
 }
 
 async function edit(id, lang) {
-  if (!currentUser) return login()
   app.replaceChildren(el('p', { class: 'loading', text: 'Opening banner…' }))
   try {
-    const row = check(await db.from('code_studio_banners')
-      .select('id,title,en,fr,us').eq('id', id).single())
-    const slides = row[lang]?.length ? row[lang] : row.en
+    const row = projects().find(item => item.id === id)
+    if (!row) throw new Error('Project not found in this browser.')
+    const slides = await displayImages(row[lang]?.length ? row[lang] : row.en)
     app.replaceChildren(el('div', { id: 'jcs-root' }))
     document.body.className = 'jcs-editor-body'
     if (!document.querySelector('#editor-css')) document.head.append(el('link', { id: 'editor-css', rel: 'stylesheet', href: import.meta.env.BASE_URL + 'editor.css' }))
@@ -189,10 +225,7 @@ async function edit(id, lang) {
         const cleanTitle = title.trim()
         if (!cleanTitle || cleanTitle.length > 200) throw new Error('Title must be 1–200 characters.')
         if (!Array.isArray(data) || !data.length) throw new Error('A banner needs at least one slide.')
-        const updated = check(await db.from('code_studio_banners')
-          .update({ title: cleanTitle, [lang]: data, updated_at: new Date().toISOString() })
-          .eq('id', id).select('id'))
-        if (!updated.length) throw new Error('Banner was not saved. Check your account permissions.')
+        saveProject({ ...row, title: cleanTitle, [lang]: savedImages(data), updated_at: new Date().toISOString() })
       }
     }
     const old = document.getElementById('editor-js')
@@ -223,10 +256,10 @@ function addImageUploads(id) {
       button.disabled = true
       button.textContent = 'Uploading…'
       try {
-        const extension = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }[image.type]
-        const path = currentUser.id + '/' + id + '/' + crypto.randomUUID() + '.' + extension
-        check(await db.storage.from('code-studio-images').upload(path, image, { contentType: image.type }))
-        input.value = db.storage.from('code-studio-images').getPublicUrl(path).data.publicUrl
+        const imageId = await storeImage(image)
+        const objectUrl = URL.createObjectURL(image)
+        imageUrls.set(objectUrl, 'code-studio-image:' + imageId)
+        input.value = objectUrl
         input.dispatchEvent(new Event('input', { bubbles: true }))
         input.dispatchEvent(new Event('change', { bubbles: true }))
       } catch (error) { alert('Image upload failed: ' + error.message) }
@@ -242,20 +275,7 @@ async function route() {
   if (match) await edit(match[1], language(match[2]))
   else await dashboard()
 }
-async function start() {
-  if (!db) {
-    app.replaceChildren(el('div', { class: 'login-card' }, [
-      el('h1', { text: 'Code Studio needs its Supabase project' }),
-      el('p', { text: 'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to the dedicated project before deployment.' })
-    ]))
-    return
-  }
-  const { data: { user }, error } = await db.auth.getUser()
-  if (error && error.name !== 'AuthSessionMissingError') console.error(error)
-  currentUser = user
-  if (!user) return login()
-  await route()
-}
+async function start() { await route() }
 window.addEventListener('hashchange', () => {
   // The original editor registers document-wide listeners. Reload between
   // projects/languages so a previous editor can never save stale slides.
