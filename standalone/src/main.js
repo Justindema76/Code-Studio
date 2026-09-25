@@ -244,7 +244,7 @@ async function edit(id, lang) {
     const slides = await displayImages(row[lang]?.length ? row[lang] : row.en)
     app.replaceChildren(el('div', { id: 'jcs-root' }))
     document.body.className = 'jcs-editor-body'
-    if (!document.querySelector('#editor-css')) document.head.append(el('link', { id: 'editor-css', rel: 'stylesheet', href: import.meta.env.BASE_URL + 'editor.css' }))
+    if (!document.querySelector('#editor-css')) document.head.append(el('link', { id: 'editor-css', rel: 'stylesheet', href: import.meta.env.BASE_URL + 'editor.css?version=standalone-2' }))
     window.JCS_EDITOR_DATA = {
       postId: row.id, title: row.title, slides,
       language: lang, languageLabel: { en: 'English', fr: 'French', us: 'USA' }[lang],
@@ -260,7 +260,7 @@ async function edit(id, lang) {
     }
     const old = document.getElementById('editor-js')
     if (old) old.remove()
-    app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=standalone-1' }))
+    app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=standalone-2' }))
     const onLoad = () => addImageUploads(id)
     app.querySelector('#editor-js').addEventListener('load', onLoad, { once: true })
   } catch (error) {
