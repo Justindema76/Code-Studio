@@ -1,6 +1,6 @@
 html,body{margin:0;padding:0;background:#f4f4f6;}
 .jcs{
-  --accent:#3157DF; --bg:#f4f4f6; --panel:#fff; --border:#dedee3; --text:#1b1b1d; --muted:#6f6f76;
+  --accent:#e53935; --bg:#f4f4f6; --panel:#fff; --border:#dedee3; --text:#1b1b1d; --muted:#6f6f76;
   font-family:Inter,Arial,sans-serif; color:var(--text); min-height:100vh;
 }
 .jcs *{box-sizing:border-box}

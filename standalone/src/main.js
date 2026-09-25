@@ -40,7 +40,10 @@ async function loadImage(id) {
   })
 }
 const settings = {
-  accent: '#3157DF',
+  accent: '#e53935',
+  eyebrow_bg: '#e53935',
+  button_bg: '#e53935',
+  dash_color: '#e53935',
   fonts: 'Oswald\nInter\nArial\nGeorgia\nImpact\nMontserrat\nRoboto\nOpen Sans\nPoppins\nLato\nBebas Neue\nAnton\nBarlow Condensed\nRoboto Condensed\nPlayfair Display\nMerriweather'
 }
 let currentUser = null
@@ -117,6 +120,32 @@ function download(name, content) {
 }
 function language(value) { return ['en', 'fr', 'us'].includes(value) ? value : 'en' }
 function editorHref(id, lang = 'en') { return '#/edit/' + encodeURIComponent(id) + '/' + language(lang) }
+
+async function translateToFrench(source) {
+  if (!source.length) throw new Error('Save the English banner first.')
+  const fields = ['eyebrow', 'heading', 'subheading', 'buttonText', 'altText']
+  const translated = structuredClone(source)
+  for (const slide of translated) {
+    for (const field of fields) {
+      if (!slide[field]?.trim()) continue
+      const lines = slide[field].split('\n')
+      for (let index = 0; index < lines.length; index++) {
+        if (!lines[index].trim()) continue
+        const query = new URLSearchParams({ q: lines[index], langpair: 'en|fr' })
+        const response = await fetch('https://api.mymemory.translated.net/get?' + query)
+        if (!response.ok) throw new Error('Translation service is unavailable (' + response.status + ').')
+        const result = await response.json()
+        if (result.responseStatus !== 200 || !result.responseData?.translatedText)
+          throw new Error('Translation service could not translate the ' + field + ' text.')
+        const decoder = document.createElement('textarea')
+        decoder.innerHTML = result.responseData.translatedText
+        lines[index] = decoder.value
+      }
+      slide[field] = lines.join('\n')
+    }
+  }
+  return translated
+}
 
 async function dashboard() {
   app.replaceChildren()
@@ -221,6 +250,7 @@ async function edit(id, lang) {
       language: lang, languageLabel: { en: 'English', fr: 'French', us: 'USA' }[lang],
       listUrl: '#/', englishUrl: editorHref(id, 'en'), frenchUrl: editorHref(id, 'fr'),
       usaUrl: editorHref(id, 'us'), settings,
+      translate: async () => translateToFrench(row.en),
       save: async ({ title, data }) => {
         const cleanTitle = title.trim()
         if (!cleanTitle || cleanTitle.length > 200) throw new Error('Title must be 1–200 characters.')
