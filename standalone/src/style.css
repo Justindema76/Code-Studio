@@ -1,0 +1,15 @@
+:root{font-family:Inter,system-ui,sans-serif;color:#17191d;background:#f6f7f9;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button,.button{cursor:pointer;border:1px solid #3157df;background:#3157df;color:white;padding:10px 14px;border-radius:8px;font-weight:700;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+button:disabled{opacity:.6;cursor:wait}.secondary{background:white;color:#27334c;border-color:#d7dbe2}.danger{background:white;color:#b42318;border-color:#e7c6c3}
+.login-card{max-width:430px;margin:10vh auto;background:#fff;border:1px solid #e6e8ec;border-radius:16px;padding:34px;box-shadow:0 20px 60px #11182712;display:grid;gap:12px}
+.login-card h1{margin:0;font-size:32px}.login-card p{color:#68707c;margin:0 0 12px}.login-card label{font-weight:700;font-size:13px}.login-card input{width:100%;padding:12px;border:1px solid #d7dbe2;border-radius:8px}.login-card button{margin-top:10px}
+.eyebrow,.heading{font-size:11px;letter-spacing:.14em;font-weight:800;color:#3157df}.status{min-height:1.3em;color:#286a48;font-size:13px}.status.error{color:#b42318}
+.dashboard{min-height:100vh;display:grid;grid-template-columns:240px 1fr}.sidebar{background:#111827;color:#fff;padding:30px 18px;display:flex;flex-direction:column;gap:24px}
+.brand{font-weight:900;letter-spacing:.08em;padding:4px 10px}.nav-active{background:#27334c;padding:13px;border-radius:9px;font-weight:700}
+.signed-in{margin-top:auto;color:#b6bdca;font-size:12px;overflow-wrap:anywhere}.content{padding:52px;max-width:1400px;width:100%;margin:auto}.content h1{font-size:36px;margin:8px 0}.content>p{color:#68707c}
+.toolbar,.actions{display:flex;flex-wrap:wrap;gap:9px}.toolbar{margin:28px 0 12px}
+.banner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}.card,.empty{background:#fff;border:1px solid #e6e8ec;border-radius:14px;padding:24px;box-shadow:0 8px 24px #11182708}
+.card h2{margin:0;font-size:19px}.card p{font-size:12px;color:#68707c}.tags{font-size:11px;color:#3157df;font-weight:800;margin:20px 0}.empty{grid-column:1/-1;text-align:center;padding:64px;color:#68707c}
+.loading{margin:10vh auto;text-align:center}
+@media(max-width:900px){.dashboard{display:block}.sidebar{padding:15px;flex-direction:row;align-items:center;flex-wrap:wrap}.signed-in{margin:0 0 0 auto}.content{padding:25px}.banner-grid{grid-template-columns:1fr}}
+@media(max-width:500px){.login-card{margin:7vh 12px;padding:24px}.toolbar button{flex:1}.actions>*{flex:1}}
