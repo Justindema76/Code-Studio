@@ -260,7 +260,7 @@ async function edit(id, lang) {
     }
     const old = document.getElementById('editor-js')
     if (old) old.remove()
-    app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=standalone-2' }))
+    app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=standalone-3' }))
     const onLoad = () => addImageUploads(id)
     app.querySelector('#editor-js').addEventListener('load', onLoad, { once: true })
   } catch (error) {
