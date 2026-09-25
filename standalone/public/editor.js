@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 26291)
-Total output lines: 1177
-
 (function(){
   var DATA = window.JCS_EDITOR_DATA || {};
   var STUDIO = DATA.settings || {};
@@ -448,7 +445,202 @@ Total output lines: 1177
     el('fMobShowContent').checked = s.mobileShowContent !== false;
     if (typeof s.eyebrowBgEnabled === 'undefined') s.eyebrowBgEnabled = true;
     if (typeof s.buttonBgEnabled === 'undefined') s.buttonBgEnabled = true;
-  …4291 tokens truncated…l').addEventListener('click', function(){ if(g.stops.length<=2) return; g.stops.splice(selectedStop,1); selectedStop = Math.max(0, selectedStop-1); renderGradientUI(); renderAll(); markDirty(); });
+    el('fEyebrowBgEnabled').checked = !!s.eyebrowBgEnabled;
+    el('jcsEyebrowBgDetail').style.display = s.eyebrowBgEnabled ? 'block' : 'none';
+    el('fButtonBgEnabled').checked = !!s.buttonBgEnabled;
+    el('jcsButtonBgDetail').style.display = s.buttonBgEnabled ? 'block' : 'none';
+    el('fEyebrowShadowEnabled').checked = !!s.eyebrowShadowEnabled;
+    el('jcsEyebrowShadowDetail').style.display = s.eyebrowShadowEnabled ? 'block' : 'none';
+    el('fButtonShadowEnabled').checked = !!s.buttonShadowEnabled;
+    el('jcsButtonShadowDetail').style.display = s.buttonShadowEnabled ? 'block' : 'none';
+    el('fButtonHoverEnabled').checked = !!s.buttonHoverEnabled;
+    el('jcsButtonHoverDetail').style.display = s.buttonHoverEnabled ? 'block' : 'none';
+    refreshOverlayUI(); refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields();
+  }
+
+  ['fBtnNewTab','fDeskBgNewTab','fMobBgNewTab','fDeskShowContent','fMobShowContent'].forEach(function(id){
+    el(id).addEventListener('change',function(){
+      var map={fBtnNewTab:'buttonNewTab',fDeskBgNewTab:'desktopBgNewTab',fMobBgNewTab:'mobileBgNewTab',fDeskShowContent:'showContent',fMobShowContent:'mobileShowContent'};
+      cur()[map[id]]=!!this.checked; markDirty(); renderAll();
+    });
+  });
+
+  function refreshOverlayUI(){
+    var type = cur().overlayType;
+    el('jcsOverlayColorRow').style.display = type==='color' ? 'block' : 'none';
+    el('jcsOverlayImageRow').style.display = type==='image' ? 'block' : 'none';
+  }
+  el('fOverlayType').addEventListener('change', function(){ cur().overlayType = el('fOverlayType').value; refreshOverlayUI(); renderAll(); markDirty(); });
+
+  var LAYOUT_PX_FIELDS = { fPaddingX:'contentPadding', fShiftX:'contentShiftX', fShiftY:'contentShiftY', fGapEyebrow:'gapEyebrow', fGapHeading:'gapHeading', fGapSub:'gapSub' };
+  var TYPO_PX_FIELDS = { fEyebrowSize:'eyebrowSize', fHeadingSize:'headingSize', fSubSize:'subSize', fButtonFontSize:'buttonFontSize', fWidth:'contentWidth', fEyebrowShiftX:'eyebrowShiftX', fEyebrowShiftY:'eyebrowShiftY', fHeadingShiftX:'headingShiftX', fHeadingShiftY:'headingShiftY', fSubShiftX:'subShiftX', fSubShiftY:'subShiftY', fButtonShiftX:'buttonShiftX', fButtonShiftY:'buttonShiftY', fButtonWidth:'buttonWidth' };
+  var TYPO_SPACING_FIELDS = { fEyebrowLetterSpacing:'eyebrowLetterSpacing', fHeadingLetterSpacing:'headingLetterSpacing', fSubLetterSpacing:'subLetterSpacing', fButtonLetterSpacing:'buttonLetterSpacing' };
+
+  function refreshTypographyFields(){
+    el('jcsTypeModeBadge').textContent = 'Editing: ' + (mode==='desktop' ? 'Desktop' : 'Mobile') + ' typography';
+    el('jcsCopyTypo').textContent = mode==='desktop' ? 'Copy from Mobile typography' : 'Copy from Desktop typography';
+    Object.keys(TYPO_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(TYPO_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fWidthNumber')) el('fWidthNumber').value=curVal('contentWidth');
+    Object.keys(TYPO_SPACING_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(TYPO_SPACING_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; });
+    document.querySelectorAll('#jcsTextAlignGroup button').forEach(function(b){ b.classList.toggle('active', b.dataset.value === curVal('textAlign')); });
+  }
+  Object.keys(TYPO_PX_FIELDS).forEach(function(id){
+    el(id).addEventListener('input', function(){ setVal(TYPO_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fWidth' && el('fWidthNumber')) el('fWidthNumber').value=el(id).value; renderAll(); });
+  });
+  Object.keys(TYPO_SPACING_FIELDS).forEach(function(id){
+    el(id).addEventListener('input', function(){ setVal(TYPO_SPACING_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; renderAll(); });
+  });
+  if(el('fWidthNumber')) el('fWidthNumber').addEventListener('input', function(){ var v=Math.max(120,Math.min(1900,Number(this.value)||120)); setVal('contentWidth',v); el('fWidth').value=v; el('fWidthVal').textContent=v+'px'; renderAll(); });
+  document.querySelectorAll('.jcs-width-preset').forEach(function(btn){ btn.addEventListener('click', function(){ var v=Number(btn.dataset.width)||480; setVal('contentWidth',v); el('fWidth').value=v; if(el('fWidthNumber')) el('fWidthNumber').value=v; el('fWidthVal').textContent=v+'px'; renderAll(); markDirty(); }); });
+  document.querySelectorAll('#jcsTextAlignGroup button').forEach(function(b){ b.addEventListener('click', function(){ setVal('textAlign', b.dataset.value); refreshTypographyFields(); renderAll(); }); });
+  el('jcsCopyTypo').onclick=function(){
+    Object.keys(TYPO_PX_FIELDS).concat(Object.keys(TYPO_SPACING_FIELDS)).forEach(function(id){
+      var base = TYPO_PX_FIELDS[id] || TYPO_SPACING_FIELDS[id];
+      var fromKey = mode==='desktop' ? 'mobile'+base.charAt(0).toUpperCase()+base.slice(1) : base;
+      var toKey = mode==='desktop' ? base : 'mobile'+base.charAt(0).toUpperCase()+base.slice(1);
+      cur()[toKey] = cur()[fromKey];
+    });
+    var fromAlign = mode==='desktop' ? 'mobileTextAlign' : 'textAlign';
+    var toAlign = mode==='desktop' ? 'textAlign' : 'mobileTextAlign';
+    cur()[toAlign] = cur()[fromAlign];
+    refreshTypographyFields(); renderAll(); markDirty();
+  };
+
+  function refreshLayoutFields(){
+    el('jcsLayoutModeBadge').textContent = 'Editing: ' + (mode==='desktop' ? 'Desktop' : 'Mobile') + ' layout';
+    el('jcsCopyLayout').textContent = mode==='desktop' ? 'Copy from Mobile layout' : 'Copy from Desktop layout';
+    document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){ b.classList.toggle('active', b.dataset.value === curVal('contentSide')); });
+    el('fAlignY').value = curVal('contentAlign');
+    Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(LAYOUT_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fShiftXNumber')) el('fShiftXNumber').value=curVal('contentShiftX'); if(el('fShiftYNumber')) el('fShiftYNumber').value=curVal('contentShiftY');
+  }
+  document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){
+    b.addEventListener('click', function(){
+      setVal('contentSide', b.dataset.value);
+      document.querySelectorAll('#jcsJustifyGroup button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); renderAll();
+    });
+  });
+  el('fAlignY').addEventListener('change', function(){ setVal('contentAlign', el('fAlignY').value); renderAll(); });
+  Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){
+    el(id).addEventListener('input', function(){ setVal(LAYOUT_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; if(id==='fShiftY' && el('fShiftYNumber')) el('fShiftYNumber').value=el(id).value; renderAll(); });
+  });
+
+  if(el('fShiftXNumber')) el('fShiftXNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftX',v); el('fShiftX').value=v; el('fShiftXVal').textContent=v+'px'; renderAll(); });
+  if(el('fShiftYNumber')) el('fShiftYNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftY',v); el('fShiftY').value=v; el('fShiftYVal').textContent=v+'px'; renderAll(); });
+
+  var CONTENTBG_PX_FIELDS = { fContentBgPadding:'contentBgPadding', fContentBgRadius:'contentBgRadius', fContentBgShadowBlur:'contentBgShadowBlur', fContentBgShadowY:'contentBgShadowY' };
+  var CONTENTBG_COLOR_FIELDS = { fContentBgColor:'contentBgColor', fContentBgShadowColor:'contentBgShadowColor' };
+  function refreshContentBgFields(){
+    el('fContentBgEnabled').checked = !!curVal('contentBgEnabled');
+    el('fContentBgShadowEnabled').checked = !!curVal('contentBgShadowEnabled');
+    el('jcsContentBgDetail').style.display = curVal('contentBgEnabled') ? 'block' : 'none';
+    el('jcsContentBgShadowDetail').style.display = curVal('contentBgShadowEnabled') ? 'block' : 'none';
+    Object.keys(CONTENTBG_COLOR_FIELDS).forEach(function(id){ el(id).value = curVal(CONTENTBG_COLOR_FIELDS[id]); });
+    Object.keys(CONTENTBG_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(CONTENTBG_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; });
+    el('fContentBgOpacity').value = curVal('contentBgOpacity'); el('fContentBgOpacityVal').textContent = curVal('contentBgOpacity')+'%';
+    el('fContentBgShadowOpacity').value = curVal('contentBgShadowOpacity'); el('fContentBgShadowOpacityVal').textContent = curVal('contentBgShadowOpacity')+'%';
+  }
+  el('fContentBgEnabled').addEventListener('change', function(){ setVal('contentBgEnabled', el('fContentBgEnabled').checked); refreshContentBgFields(); renderAll(); });
+  el('fContentBgShadowEnabled').addEventListener('change', function(){ setVal('contentBgShadowEnabled', el('fContentBgShadowEnabled').checked); refreshContentBgFields(); renderAll(); });
+  Object.keys(CONTENTBG_COLOR_FIELDS).forEach(function(id){ el(id).addEventListener('input', function(){ setVal(CONTENTBG_COLOR_FIELDS[id], el(id).value); renderAll(); }); });
+  Object.keys(CONTENTBG_PX_FIELDS).forEach(function(id){
+    el(id).addEventListener('input', function(){ setVal(CONTENTBG_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; renderAll(); });
+  });
+  el('fContentBgOpacity').addEventListener('input', function(){ setVal('contentBgOpacity', Number(el('fContentBgOpacity').value)); el('fContentBgOpacityVal').textContent = el('fContentBgOpacity').value+'%'; renderAll(); });
+  el('fContentBgShadowOpacity').addEventListener('input', function(){ setVal('contentBgShadowOpacity', Number(el('fContentBgShadowOpacity').value)); el('fContentBgShadowOpacityVal').textContent = el('fContentBgShadowOpacity').value+'%'; renderAll(); });
+
+  el('jcsCopyLayout').onclick=function(){
+    var LAYOUT_BASES = ['contentSide','contentAlign','contentPadding','contentShiftX','contentShiftY','gapEyebrow','gapHeading','gapSub','contentBgEnabled','contentBgColor','contentBgOpacity','contentBgPadding','contentBgRadius','contentBgShadowEnabled','contentBgShadowColor','contentBgShadowOpacity','contentBgShadowBlur','contentBgShadowY'];
+    LAYOUT_BASES.forEach(function(base){
+      var fromKey = mode==='desktop' ? 'mobile'+base.charAt(0).toUpperCase()+base.slice(1) : base;
+      var toKey = mode==='desktop' ? base : 'mobile'+base.charAt(0).toUpperCase()+base.slice(1);
+      cur()[toKey] = cur()[fromKey];
+    });
+    refreshLayoutFields(); refreshContentBgFields(); renderAll(); markDirty();
+  };
+
+  Object.keys(simpleFields).forEach(function(id){
+    var f=el(id); if(!f) return;
+    f.addEventListener('input', function(){ cur()[simpleFields[id]] = f.value; renderAll(); markDirty(); });
+  });
+  Object.keys(rangeFields).forEach(function(id){
+    var f=el(id); if(!f) return;
+    f.addEventListener('input', function(){ cur()[rangeFields[id]] = Number(f.value); var v=el(id+'Val'); if(v) v.textContent=valSuffix(id, f.value); renderAll(); markDirty(); });
+  });
+  el('fPauseHover').addEventListener('change', function(){ cur().pauseHover = el('fPauseHover').checked; markDirty(); });
+  el('fEyebrowBgEnabled').addEventListener('change', function(){ cur().eyebrowBgEnabled = el('fEyebrowBgEnabled').checked; el('jcsEyebrowBgDetail').style.display = cur().eyebrowBgEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
+  el('fButtonBgEnabled').addEventListener('change', function(){ cur().buttonBgEnabled = el('fButtonBgEnabled').checked; el('jcsButtonBgDetail').style.display = cur().buttonBgEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
+  el('fEyebrowShadowEnabled').addEventListener('change', function(){ cur().eyebrowShadowEnabled = el('fEyebrowShadowEnabled').checked; el('jcsEyebrowShadowDetail').style.display = cur().eyebrowShadowEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
+  el('fButtonShadowEnabled').addEventListener('change', function(){ cur().buttonShadowEnabled = el('fButtonShadowEnabled').checked; el('jcsButtonShadowDetail').style.display = cur().buttonShadowEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
+  el('fButtonHoverEnabled').addEventListener('change', function(){ cur().buttonHoverEnabled = el('fButtonHoverEnabled').checked; el('jcsButtonHoverDetail').style.display = cur().buttonHoverEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
+  ['fDeskHeight','fMobHeight'].forEach(function(id){
+    el(id).addEventListener('input', function(){
+      var value = Math.max(200, Math.min(1600, Number(el(id).value) || 200));
+      cur()[simpleFields[id]] = value;
+      renderCanvas();
+      renderCode();
+      markDirty();
+    });
+    el(id).addEventListener('change', function(){
+      var value = Math.max(200, Math.min(1600, Number(el(id).value) || 200));
+      el(id).value = value;
+      cur()[simpleFields[id]] = value;
+      renderCanvas();
+      renderCode();
+      markDirty();
+    });
+  });
+  el('fAutoplay').addEventListener('change', function(){ cur().autoplay = Number(el('fAutoplay').value); markDirty(); renderCode(); });
+
+  // ---------- gradient editor ----------
+  el('fGradType').addEventListener('change', function(){ curGradient().type = el('fGradType').value; renderGradientUI(); renderAll(); markDirty(); });
+  el('fAngle').addEventListener('input', function(){ curGradient().angle = Number(el('fAngle').value)%360; syncDial(); renderAll(); markDirty(); });
+  el('fRadX').addEventListener('input', function(){ curGradient().radialX = Number(el('fRadX').value); el('fRadXVal').textContent = el('fRadX').value+'%'; renderAll(); markDirty(); });
+  el('fRadY').addEventListener('input', function(){ curGradient().radialY = Number(el('fRadY').value); el('fRadYVal').textContent = el('fRadY').value+'%'; renderAll(); markDirty(); });
+
+  function renderGradientUI(){
+    var g = curGradient();
+    var editor = el('jcsGradientEditor');
+    editor.style.display = g.type==='off' ? 'none' : 'block';
+    el('jcsAngleRow').style.display = g.type==='linear' ? 'flex' : 'none';
+    el('jcsAngleLabel').style.display = g.type==='linear' ? 'block' : 'none';
+    el('jcsRadialRow').style.display = g.type==='radial' ? 'block' : 'none';
+    el('jcsRadialLabel').style.display = g.type==='radial' ? 'block' : 'none';
+    var bar = el('jcsGradBar');
+    bar.innerHTML = '<div class="jcs-gradient-bar-fill" style="background:linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')"></div>';
+    g.stops.forEach(function(s,i){
+      var h=document.createElement('div');
+      h.className='jcs-stop-handle'+(i===selectedStop?' selected':'');
+      h.style.left=s.pos+'%'; h.style.setProperty('--swatch', s.color); h.dataset.index=i;
+      h.addEventListener('pointerdown', function(e){
+        e.stopPropagation(); selectedStop=i; renderGradientUI();
+        var moving=true; h.setPointerCapture(e.pointerId);
+        function move(ev){ if(!moving) return; var r=bar.getBoundingClientRect(); var pct=Math.round(((ev.clientX-r.left)/r.width)*100); pct=Math.max(0,Math.min(100,pct)); g.stops[i].pos=pct; renderGradientUI(); renderAll(); markDirty(); }
+        function up(){ moving=false; h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',up); }
+        h.addEventListener('pointermove',move); h.addEventListener('pointerup',up);
+      });
+      bar.appendChild(h);
+    });
+    bar.onclick = function(e){
+      if(e.target !== bar) return;
+      var r=bar.getBoundingClientRect(); var pct=Math.round(((e.clientX-r.left)/r.width)*100);
+      g.stops.push({pos:pct, color:'#000000', opacity:0.5}); selectedStop = g.stops.length-1;
+      renderGradientUI(); renderAll(); markDirty();
+    };
+    renderStopEditor(); syncDial();
+  }
+  function renderStopEditor(){
+    var g = curGradient(); var s = g.stops[selectedStop];
+    if(!s){ el('jcsStopEditor').innerHTML=''; return; }
+    var wrap = el('jcsStopEditor');
+    wrap.innerHTML =
+      '<div class="row"><label>Colour</label><input id="jcsStopColor" type="color" value="'+s.color+'"><span></span></div>' +
+      '<div class="row"><label>Opacity</label><input id="jcsStopOpacity" type="range" min="0" max="100" value="'+Math.round(s.opacity*100)+'"><span id="jcsStopOpacityVal">'+Math.round(s.opacity*100)+'%</span></div>' +
+      '<div class="row"><label>Position</label><input id="jcsStopPos" type="range" min="0" max="100" value="'+s.pos+'"><button class="del" id="jcsStopDel" '+(g.stops.length<=2?'disabled':'')+'>Delete stop</button></div>';
+    el('jcsStopColor').addEventListener('input', function(){ s.color=this.value; renderGradientUI(); renderAll(); markDirty(); });
+    el('jcsStopOpacity').addEventListener('input', function(){ s.opacity = Number(this.value)/100; el('jcsStopOpacityVal').textContent = this.value+'%'; renderAll(); markDirty();
+      var bar=el('jcsGradBar'); if(bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')'; });
+    el('jcsStopPos').addEventListener('input', function(){ s.pos = Number(this.value); renderGradientUI(); renderAll(); markDirty(); });
+    el('jcsStopDel').addEventListener('click', function(){ if(g.stops.length<=2) return; g.stops.splice(selectedStop,1); selectedStop = Math.max(0, selectedStop-1); renderGradientUI(); renderAll(); markDirty(); });
   }
   function syncDial(){ var g = curGradient(); el('fAngle').value = g.angle; el('jcsDialHandle').style.transform = 'rotate('+g.angle+'deg)'; }
   (function setupDial(){
