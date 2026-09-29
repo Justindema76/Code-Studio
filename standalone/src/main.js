@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import './style.css'
 
 const app = document.querySelector('#app')
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-const db = url && key ? createClient(url, key) : null
 const settings = {
   accent: '#e53935',
   eyebrow_bg: '#e53935',
@@ -41,72 +37,7 @@ function download(name, content) {
 function language(value) { return ['en', 'fr', 'us'].includes(value) ? value : 'en' }
 function editorHref(id, lang = 'en') { return '#/edit/' + encodeURIComponent(id) + '/' + language(lang) }
 
-function login() {
-  app.replaceChildren()
-  const status = el('p', { class: 'status', role: 'status' })
-  const email = el('input', { type: 'email', required: '', autocomplete: 'username', placeholder: 'Email' })
-  const button = el('button', { type: 'submit', text: 'Email me a sign-in link' })
-  const pastedLink = el('input', { type: 'url', placeholder: 'Paste the email link here' })
-  const useLink = el('button', { type: 'button', class: 'secondary', text: 'Use pasted link', onclick: async () => {
-    try {
-      const link = new URL(pastedLink.value)
-      if (link.origin !== url) throw new Error('Paste the Supabase sign-in link from your email.')
-      const token_hash = link.searchParams.get('token_hash') || link.searchParams.get('token')
-      const type = link.searchParams.get('type')
-      if (!token_hash || !['magiclink', 'signup', 'email'].includes(type)) throw new Error('That email link is missing a sign-in token.')
-      check(await db.auth.verifyOtp({ token_hash, type }))
-      await start()
-    } catch (error) { message(status, error.message, true) }
-  } })
-  const form = el('form', { class: 'login-card', onsubmit: async event => {
-    event.preventDefault()
-    button.disabled = true
-    message(status, 'Sending link…')
-    try {
-      check(await db.auth.signInWithOtp({ email: email.value,
-        options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } }))
-      message(status, 'Check your email and click the sign-in link. No password needed.')
-    } catch (error) { message(status, error.message, true) }
-    finally { button.disabled = false }
-  } }, [
-    el('div', { class: 'eyebrow', text: 'JUSTINNOVATE' }),
-    el('h1', { text: 'Code Studio' }),
-    el('p', { text: 'Enter your email to get a secure sign-in link. No password needed.' }),
-    el('label', { text: 'Email' }), email, button, status,
-    el('p', { text: 'If the email link opens the old site, copy its link address and paste it here:' }),
-    pastedLink, useLink
-  ])
-  app.append(form)
-}
-
-async function translateToFrench(source) {
-  if (!source.length) throw new Error('Save the English banner first.')
-  const fields = ['eyebrow', 'heading', 'subheading', 'buttonText', 'altText']
-  const translated = structuredClone(source)
-  for (const slide of translated) {
-    for (const field of fields) {
-      if (!slide[field]?.trim()) continue
-      const lines = slide[field].split('\n')
-      for (let index = 0; index < lines.length; index++) {
-        if (!lines[index].trim()) continue
-        const query = new URLSearchParams({ q: lines[index], langpair: 'en|fr' })
-        const response = await fetch('https://api.mymemory.translated.net/get?' + query)
-        if (!response.ok) throw new Error('Translation service is unavailable (' + response.status + ').')
-        const result = await response.json()
-        if (result.responseStatus !== 200 || !result.responseData?.translatedText)
-          throw new Error('Translation service could not translate the ' + field + ' text.')
-        const decoder = document.createElement('textarea')
-        decoder.innerHTML = result.responseData.translatedText
-        lines[index] = decoder.value
-      }
-      slide[field] = lines.join('\n')
-    }
-  }
-  return translated
-}
-
 async function dashboard() {
-  if (!currentUser) return login()
   app.replaceChildren()
   const status = el('p', { class: 'status', role: 'status' })
   const grid = el('div', { class: 'banner-grid' })
@@ -272,20 +203,7 @@ async function route() {
   if (match) await edit(match[1], language(match[2]))
   else await dashboard()
 }
-async function start() {
-  if (!db) {
-    app.replaceChildren(el('div', { class: 'login-card' }, [
-      el('h1', { text: 'Code Studio needs its Supabase project' }),
-      el('p', { text: 'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to the dedicated project before deployment.' })
-    ]))
-    return
-  }
-  const { data: { user }, error } = await db.auth.getUser()
-  if (error && error.name !== 'AuthSessionMissingError') console.error(error)
-  currentUser = user
-  if (!user) return login()
-  await route()
-}
+async function start() { await route() }
 window.addEventListener('hashchange', () => {
   // The original editor registers document-wide listeners. Reload between
   // projects/languages so a previous editor can never save stale slides.
