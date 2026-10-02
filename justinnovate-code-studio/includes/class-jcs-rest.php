@@ -155,9 +155,51 @@ class JCS_REST {
 			return new WP_Error( 'jcs_bad_request', __( 'Missing or invalid data payload.', 'jcs' ), array( 'status' => 400 ) );
 		}
 
-		JCS_CPT::save_data( $id, $body['data'], $this->language( $request ) );
+		$lang = $this->language( $request );
+		JCS_CPT::save_data( $id, $body['data'], $lang );
 
-		if ( 'en' === $this->language( $request ) && ! empty( $body['title'] ) ) {
+		if ( 'en' === $lang ) {
+			$locale_ops = ( isset( $body['localeOps'] ) && is_array( $body['localeOps'] ) ) ? $body['localeOps'] : array();
+
+			foreach ( array( 'fr', 'us' ) as $locale ) {
+				$localized = JCS_CPT::get_data( $id, $locale );
+
+				// If this locale has never been saved, seed it from the complete
+				// English slider so every banner exists immediately.
+				if ( empty( $localized ) ) {
+					JCS_CPT::save_data( $id, $body['data'], $locale );
+					continue;
+				}
+
+				foreach ( $locale_ops as $op ) {
+					if ( ! is_array( $op ) || 'duplicate' !== ( $op['type'] ?? '' ) ) {
+						continue;
+					}
+
+					$source_index = isset( $op['sourceIndex'] ) ? (int) $op['sourceIndex'] : -1;
+					$target_index = isset( $op['targetIndex'] ) ? (int) $op['targetIndex'] : -1;
+
+					if ( $source_index < 0 || $target_index < 0 || ! isset( $localized[ $source_index ] ) ) {
+						continue;
+					}
+
+					$copy = $localized[ $source_index ];
+					$target_index = min( $target_index, count( $localized ) );
+					array_splice( $localized, $target_index, 0, array( $copy ) );
+				}
+
+				// Repair older projects created before locale slide syncing existed.
+				// This safely covers the common case where newer English banners were
+				// appended but FR/USA still have fewer slides.
+				while ( count( $localized ) < count( $body['data'] ) ) {
+					$localized[] = $body['data'][ count( $localized ) ];
+				}
+
+				JCS_CPT::save_data( $id, $localized, $locale );
+			}
+		}
+
+		if ( 'en' === $lang && ! empty( $body['title'] ) ) {
 			wp_update_post(
 				array(
 					'ID'         => $id,
