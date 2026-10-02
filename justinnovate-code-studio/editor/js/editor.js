@@ -366,7 +366,7 @@
   var slides = (Array.isArray(DATA.slides) && DATA.slides.length) ? DATA.slides : [defaults()];
   slides.forEach(function(s){ var d=defaults(); Object.keys(d).forEach(function(k){ if(s[k]===undefined || s[k]===null) s[k]=d[k]; }); });
   var instanceId = 'jcs' + (DATA.postId || Math.random().toString(36).slice(2,8));
-  var active=0, mode='desktop', selectedStop=0, dirty=false;
+  var active=0, mode='desktop', selectedStop=0, dirty=false, localeOps=[];
 
   function cur(){ return slides[active]; }
   function deviceKey(base){ return mode==='mobile' ? 'mobile'+base.charAt(0).toUpperCase()+base.slice(1) : base; }
@@ -763,7 +763,15 @@
     el('jcsModeBadge').textContent = slides.length>1 ? '- Slider ('+slides.length+')' : '- Single banner';
   }
   el('jcsAdd').onclick=function(){ slides.push(defaults()); active=slides.length-1; loadFields(); renderAll(); markDirty(); };
-  el('jcsDuplicate').onclick=function(){ slides.splice(active+1,0,JSON.parse(JSON.stringify(cur()))); active++; loadFields(); renderAll(); markDirty(); };
+  el('jcsDuplicate').onclick=function(){
+    var sourceIndex=active;
+    slides.splice(active+1,0,JSON.parse(JSON.stringify(cur())));
+    active++;
+    if(DATA.language==='en'){
+      localeOps.push({type:'duplicate',sourceIndex:sourceIndex,targetIndex:active});
+    }
+    loadFields(); renderAll(); markDirty();
+  };
   el('jcsRemove').onclick=function(){
     if(slides.length===1){ window.alert('A project must contain at least one banner. Use New blank to reset it.'); return; }
     if(!window.confirm('Remove Banner '+(active+1)+'?')) return;
@@ -1148,7 +1156,7 @@ googleFontsLink() + '\n' +
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': DATA.nonce },
-      body: JSON.stringify({ data: slides, title: el('jcsTitle').value })
+      body: JSON.stringify({ data: slides, title: el('jcsTitle').value, localeOps: localeOps })
     }).then(function(r){
         return r.text().then(function(text){
           var parsed; try { parsed = JSON.parse(text); } catch(e) { parsed = null; }
@@ -1160,7 +1168,7 @@ googleFontsLink() + '\n' +
           return parsed;
         });
       })
-      .then(function(){ dirty = false; status.textContent = 'All changes saved'; btn.disabled = false; })
+      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false; })
       .catch(function(err){ status.textContent = 'Save failed: ' + err.message + ' (see console)'; btn.disabled = false; });
   }
   el('jcsSave').onclick = doSave;
