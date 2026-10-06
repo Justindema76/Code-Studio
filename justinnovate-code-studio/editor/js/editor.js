@@ -633,7 +633,7 @@
     if(!s){ el('jcsStopEditor').innerHTML=''; return; }
     var wrap = el('jcsStopEditor');
     wrap.innerHTML =
-      '<div class="row color-row"><label>Colour</label><div class="jcs-stop-color-control"><input id="jcsStopColor" type="color" value="'+s.color+'" title="Pick gradient colour"><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" aria-label="Gradient colour hex value"></div><span></span></div>' +
+      '<div class="row color-row"><label>Colour / HEX</label><div class="jcs-stop-color-control"><input id="jcsStopColor" type="color" value="'+s.color+'" title="Pick gradient colour"><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" placeholder="#000000" aria-label="Gradient colour hex value"></div><span></span></div>' +
       '<div class="jcs-stop-presets" aria-label="Quick gradient colours">' +
         '<button type="button" data-color="#FFFFFF" style="--preset:#FFFFFF" title="White"></button>' +
         '<button type="button" data-color="#000000" style="--preset:#000000" title="Black"></button>' +
@@ -778,8 +778,64 @@
     refreshGradientFields(); renderAll(); markDirty();
   };
 
+  function seedMobileFromDesktopOnce(){
+    var s = cur();
+    if(s.mobileSeededFromDesktop) return;
+
+    // Mobile starts from the desktop design instead of a generic blank/default state.
+    // This runs once per banner. After that, mobile stays independently editable.
+    s.mobileGradient = JSON.parse(JSON.stringify(s.gradient || defaultGradient()));
+    s.mobileContentSide = s.contentSide;
+    s.mobileTextAlign = s.textAlign;
+    s.mobileContentAlign = s.contentAlign;
+    s.mobileContentPadding = s.contentPadding;
+    s.mobileContentShiftX = s.contentShiftX;
+    s.mobileContentShiftY = s.contentShiftY;
+    s.mobileGapEyebrow = s.gapEyebrow;
+    s.mobileGapHeading = s.gapHeading;
+    s.mobileGapSub = s.gapSub;
+    s.mobileContentWidth = s.contentWidth;
+
+    s.mobileEyebrowSize = s.eyebrowSize;
+    s.mobileHeadingSize = s.headingSize;
+    s.mobileSubSize = s.subSize;
+    s.mobileButtonFontSize = s.buttonFontSize;
+    s.mobileEyebrowLetterSpacing = s.eyebrowLetterSpacing;
+    s.mobileHeadingLetterSpacing = s.headingLetterSpacing;
+    s.mobileSubLetterSpacing = s.subLetterSpacing;
+    s.mobileButtonLetterSpacing = s.buttonLetterSpacing;
+
+    s.mobileEyebrowShiftX = s.eyebrowShiftX;
+    s.mobileEyebrowShiftY = s.eyebrowShiftY;
+    s.mobileHeadingShiftX = s.headingShiftX;
+    s.mobileHeadingShiftY = s.headingShiftY;
+    s.mobileSubShiftX = s.subShiftX;
+    s.mobileSubShiftY = s.subShiftY;
+    s.mobileButtonShiftX = s.buttonShiftX;
+    s.mobileButtonShiftY = s.buttonShiftY;
+    s.mobileButtonWidth = s.buttonWidth;
+
+    s.mobileContentBgEnabled = s.contentBgEnabled;
+    s.mobileContentBgColor = s.contentBgColor;
+    s.mobileContentBgOpacity = s.contentBgOpacity;
+    s.mobileContentBgPadding = s.contentBgPadding;
+    s.mobileContentBgRadius = s.contentBgRadius;
+    s.mobileContentBgShadowEnabled = s.contentBgShadowEnabled;
+    s.mobileContentBgShadowColor = s.contentBgShadowColor;
+    s.mobileContentBgShadowOpacity = s.contentBgShadowOpacity;
+    s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
+    s.mobileContentBgShadowY = s.contentBgShadowY;
+
+    // Start background framing from the desktop focal point too.
+    s.mobileX = s.desktopX;
+    s.mobileY = s.desktopY;
+
+    s.mobileSeededFromDesktop = true;
+    markDirty();
+  }
+
   el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
-  el('jcsMobileMode').onclick=function(){ mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
+  el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
 
   document.querySelectorAll('.jcs-tab').forEach(function(t){
