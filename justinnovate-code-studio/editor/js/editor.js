@@ -702,7 +702,7 @@
     if(!s){ el('jcsStopEditor').innerHTML=''; return; }
     var wrap = el('jcsStopEditor');
     wrap.innerHTML =
-      '<div class="row color-row"><label>Colour / HEX</label><div class="jcs-stop-color-control"><input id="jcsStopColor" type="color" value="'+s.color+'" title="Pick gradient colour"><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" placeholder="#000000" aria-label="Gradient colour hex value"></div><span></span></div>' +
+      '<div class="row color-row"><label>Colour</label><div class="jcs-stop-color-control"><span class="jcs-stop-swatch" id="jcsStopSwatch" style="--swatch:'+s.color+'" aria-hidden="true"></span><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" placeholder="#000000" aria-label="Gradient colour hex value"></div><span></span></div>' +
       '<div class="jcs-stop-presets" aria-label="Quick gradient colours">' +
         '<button type="button" data-color="#FFFFFF" style="--preset:#FFFFFF" title="White"></button>' +
         '<button type="button" data-color="#000000" style="--preset:#000000" title="Black"></button>' +
@@ -718,10 +718,10 @@
       var v = String(value || '').trim();
       if(/^#[0-9a-fA-F]{6}$/.test(v) === false) return false;
       s.color = v.toUpperCase();
-      var picker = el('jcsStopColor');
       var hex = el('jcsStopHex');
-      if(picker && picker.value.toUpperCase() !== s.color) picker.value = s.color;
+      var swatch = el('jcsStopSwatch');
       if(hex && hex.value.toUpperCase() !== s.color) hex.value = s.color;
+      if(swatch) swatch.style.setProperty('--swatch', s.color);
       var bar = el('jcsGradBar');
       if(bar && bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')';
       var handle = bar ? bar.querySelector('.jcs-stop-handle.selected') : null;
@@ -729,10 +729,6 @@
       renderAll(); markDirty();
       return true;
     }
-
-    // Do NOT rebuild the whole gradient editor while the native colour picker is open.
-    // Rebuilding it on every input event was destroying the picker and made colours hard to change.
-    el('jcsStopColor').addEventListener('input', function(){ paintStopColor(this.value); });
 
     el('jcsStopHex').addEventListener('input', function(){
       var v=this.value.trim();
