@@ -364,7 +364,76 @@
   }
 
   var slides = (Array.isArray(DATA.slides) && DATA.slides.length) ? DATA.slides : [defaults()];
-  slides.forEach(function(s){ var d=defaults(); Object.keys(d).forEach(function(k){ if(s[k]===undefined || s[k]===null) s[k]=d[k]; }); });
+  slides.forEach(function(s){
+    var d=defaults();
+    Object.keys(d).forEach(function(k){ if(s[k]===undefined || s[k]===null) s[k]=d[k]; });
+
+    // One-time migration for older banners whose mobile view was left at the old blank defaults.
+    // If desktop has real design content but mobile has never been intentionally configured,
+    // start mobile from the desktop design and give the background a usable portrait framing.
+    var hasDesktopDesign = !!(
+      s.desktopImage ||
+      s.eyebrow ||
+      s.heading ||
+      s.subheading ||
+      s.buttonText ||
+      (s.gradient && s.gradient.type && s.gradient.type!=='off')
+    );
+    var legacyMobileDefaults = !s.mobileSeededFromDesktop &&
+      s.mobileGradient && s.mobileGradient.type==='off' &&
+      Number(s.mobileX)===50 && Number(s.mobileY)===23 && Number(s.mobileWidth)===100;
+
+    if(hasDesktopDesign && legacyMobileDefaults){
+      s.mobileGradient = JSON.parse(JSON.stringify(s.gradient || defaultGradient()));
+      s.mobileContentSide = s.contentSide;
+      s.mobileTextAlign = s.textAlign;
+      s.mobileContentAlign = s.contentAlign;
+      s.mobileContentPadding = s.contentPadding;
+      s.mobileContentShiftX = s.contentShiftX;
+      s.mobileContentShiftY = s.contentShiftY;
+      s.mobileGapEyebrow = s.gapEyebrow;
+      s.mobileGapHeading = s.gapHeading;
+      s.mobileGapSub = s.gapSub;
+      s.mobileContentWidth = s.contentWidth;
+
+      s.mobileEyebrowSize = s.eyebrowSize;
+      s.mobileHeadingSize = s.headingSize;
+      s.mobileSubSize = s.subSize;
+      s.mobileButtonFontSize = s.buttonFontSize;
+      s.mobileEyebrowLetterSpacing = s.eyebrowLetterSpacing;
+      s.mobileHeadingLetterSpacing = s.headingLetterSpacing;
+      s.mobileSubLetterSpacing = s.subLetterSpacing;
+      s.mobileButtonLetterSpacing = s.buttonLetterSpacing;
+
+      s.mobileEyebrowShiftX = s.eyebrowShiftX;
+      s.mobileEyebrowShiftY = s.eyebrowShiftY;
+      s.mobileHeadingShiftX = s.headingShiftX;
+      s.mobileHeadingShiftY = s.headingShiftY;
+      s.mobileSubShiftX = s.subShiftX;
+      s.mobileSubShiftY = s.subShiftY;
+      s.mobileButtonShiftX = s.buttonShiftX;
+      s.mobileButtonShiftY = s.buttonShiftY;
+      s.mobileButtonWidth = s.buttonWidth;
+
+      s.mobileContentBgEnabled = s.contentBgEnabled;
+      s.mobileContentBgColor = s.contentBgColor;
+      s.mobileContentBgOpacity = s.contentBgOpacity;
+      s.mobileContentBgPadding = s.contentBgPadding;
+      s.mobileContentBgRadius = s.contentBgRadius;
+      s.mobileContentBgShadowEnabled = s.contentBgShadowEnabled;
+      s.mobileContentBgShadowColor = s.contentBgShadowColor;
+      s.mobileContentBgShadowOpacity = s.contentBgShadowOpacity;
+      s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
+      s.mobileContentBgShadowY = s.contentBgShadowY;
+
+      // Portrait starting point: center the artwork, move it slightly upward,
+      // and enlarge contained/width-based desktop artwork so mobile isn't mostly blank.
+      s.mobileX = 50;
+      s.mobileY = 38;
+      s.mobileWidth = (s.desktopFit==='contain' || s.desktopFit==='width') ? 150 : 120;
+      s.mobileSeededFromDesktop = true;
+    }
+  });
   var instanceId = 'jcs' + (DATA.postId || Math.random().toString(36).slice(2,8));
   var active=0, mode='desktop', selectedStop=0, dirty=false, localeOps=[];
 
@@ -826,9 +895,10 @@
     s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
     s.mobileContentBgShadowY = s.contentBgShadowY;
 
-    // Start background framing from the desktop focal point too.
-    s.mobileX = s.desktopX;
-    s.mobileY = s.desktopY;
+    // Give mobile a usable portrait starting point instead of copying a desktop crop literally.
+    s.mobileX = 50;
+    s.mobileY = 38;
+    s.mobileWidth = (s.desktopFit==='contain' || s.desktopFit==='width') ? 150 : 120;
 
     s.mobileSeededFromDesktop = true;
     markDirty();
