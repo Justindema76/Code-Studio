@@ -364,75 +364,7 @@
   }
 
   var slides = (Array.isArray(DATA.slides) && DATA.slides.length) ? DATA.slides : [defaults()];
-  slides.forEach(function(s){
-    var d=defaults();
-    Object.keys(d).forEach(function(k){ if(s[k]===undefined || s[k]===null) s[k]=d[k]; });
-
-    // Migrate older banners that still have the old untouched mobile defaults.
-    // Mobile should begin as a usable portrait version of the desktop design,
-    // not as a second blank design that has to be rebuilt.
-    var hasDesktopDesign = !!(
-      s.desktopImage ||
-      s.eyebrow ||
-      s.heading ||
-      s.subheading ||
-      s.buttonText ||
-      (s.gradient && s.gradient.type && s.gradient.type!=='off')
-    );
-    var legacyMobileDefaults = !s.mobileSeededFromDesktop &&
-      s.mobileGradient && s.mobileGradient.type==='off' &&
-      Number(s.mobileX)===50 && Number(s.mobileY)===23 && Number(s.mobileWidth)===100;
-
-    if(hasDesktopDesign && legacyMobileDefaults){
-      s.mobileGradient = JSON.parse(JSON.stringify(s.gradient || defaultGradient()));
-      s.mobileContentSide = s.contentSide;
-      s.mobileTextAlign = s.textAlign;
-      s.mobileContentAlign = s.contentAlign;
-      s.mobileContentPadding = s.contentPadding;
-      s.mobileContentShiftX = s.contentShiftX;
-      s.mobileContentShiftY = s.contentShiftY;
-      s.mobileGapEyebrow = s.gapEyebrow;
-      s.mobileGapHeading = s.gapHeading;
-      s.mobileGapSub = s.gapSub;
-      s.mobileContentWidth = s.contentWidth;
-
-      s.mobileEyebrowSize = s.eyebrowSize;
-      s.mobileHeadingSize = s.headingSize;
-      s.mobileSubSize = s.subSize;
-      s.mobileButtonFontSize = s.buttonFontSize;
-      s.mobileEyebrowLetterSpacing = s.eyebrowLetterSpacing;
-      s.mobileHeadingLetterSpacing = s.headingLetterSpacing;
-      s.mobileSubLetterSpacing = s.subLetterSpacing;
-      s.mobileButtonLetterSpacing = s.buttonLetterSpacing;
-
-      s.mobileEyebrowShiftX = s.eyebrowShiftX;
-      s.mobileEyebrowShiftY = s.eyebrowShiftY;
-      s.mobileHeadingShiftX = s.headingShiftX;
-      s.mobileHeadingShiftY = s.headingShiftY;
-      s.mobileSubShiftX = s.subShiftX;
-      s.mobileSubShiftY = s.subShiftY;
-      s.mobileButtonShiftX = s.buttonShiftX;
-      s.mobileButtonShiftY = s.buttonShiftY;
-      s.mobileButtonWidth = s.buttonWidth;
-
-      s.mobileContentBgEnabled = s.contentBgEnabled;
-      s.mobileContentBgColor = s.contentBgColor;
-      s.mobileContentBgOpacity = s.contentBgOpacity;
-      s.mobileContentBgPadding = s.contentBgPadding;
-      s.mobileContentBgRadius = s.contentBgRadius;
-      s.mobileContentBgShadowEnabled = s.contentBgShadowEnabled;
-      s.mobileContentBgShadowColor = s.contentBgShadowColor;
-      s.mobileContentBgShadowOpacity = s.contentBgShadowOpacity;
-      s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
-      s.mobileContentBgShadowY = s.contentBgShadowY;
-
-      // A portrait-safe first view for the shared desktop image.
-      s.mobileX = 50;
-      s.mobileY = 38;
-      s.mobileWidth = (s.desktopFit==='contain' || s.desktopFit==='width') ? 150 : 120;
-      s.mobileSeededFromDesktop = true;
-    }
-  });
+  slides.forEach(function(s){ var d=defaults(); Object.keys(d).forEach(function(k){ if(s[k]===undefined || s[k]===null) s[k]=d[k]; }); });
   var instanceId = 'jcs' + (DATA.postId || Math.random().toString(36).slice(2,8));
   var active=0, mode='desktop', selectedStop=0, dirty=false, localeOps=[];
 
@@ -701,27 +633,10 @@
     if(!s){ el('jcsStopEditor').innerHTML=''; return; }
     var wrap = el('jcsStopEditor');
     wrap.innerHTML =
-      '<div class="row color-row"><label>Colour / HEX</label><div class="jcs-stop-color-control"><input id="jcsStopColor" type="color" value="'+s.color+'" title="Pick gradient colour"><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" placeholder="#000000" aria-label="Gradient colour hex value"></div><span></span></div>' +
+      '<div class="row"><label>Colour</label><input id="jcsStopColor" type="color" value="'+s.color+'"><span></span></div>' +
       '<div class="row"><label>Opacity</label><input id="jcsStopOpacity" type="range" min="0" max="100" value="'+Math.round(s.opacity*100)+'"><span id="jcsStopOpacityVal">'+Math.round(s.opacity*100)+'%</span></div>' +
       '<div class="row"><label>Position</label><input id="jcsStopPos" type="range" min="0" max="100" value="'+s.pos+'"><button class="del" id="jcsStopDel" '+(g.stops.length<=2?'disabled':'')+'>Delete stop</button></div>';
-    function paintStopColor(value){
-      var v=String(value||'').trim();
-      if(v && v.charAt(0)!=='#') v='#'+v;
-      if(!/^#[0-9a-fA-F]{6}$/.test(v)) return false;
-      s.color=v.toUpperCase();
-      var picker=el('jcsStopColor'), hex=el('jcsStopHex');
-      if(picker && picker.value.toUpperCase()!==s.color) picker.value=s.color;
-      if(hex && hex.value.toUpperCase()!==s.color) hex.value=s.color;
-      var bar=el('jcsGradBar');
-      if(bar && bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')';
-      var handle=bar ? bar.querySelector('.jcs-stop-handle.selected') : null;
-      if(handle) handle.style.setProperty('--swatch',s.color);
-      renderAll(); markDirty();
-      return true;
-    }
-    el('jcsStopColor').addEventListener('input', function(){ paintStopColor(this.value); });
-    el('jcsStopHex').addEventListener('input', function(){ paintStopColor(this.value); });
-    el('jcsStopHex').addEventListener('blur', function(){ if(!paintStopColor(this.value)) this.value=s.color.toUpperCase(); });
+    el('jcsStopColor').addEventListener('input', function(){ s.color=this.value; renderGradientUI(); renderAll(); markDirty(); });
     el('jcsStopOpacity').addEventListener('input', function(){ s.opacity = Number(this.value)/100; el('jcsStopOpacityVal').textContent = this.value+'%'; renderAll(); markDirty();
       var bar=el('jcsGradBar'); if(bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')'; });
     el('jcsStopPos').addEventListener('input', function(){ s.pos = Number(this.value); renderGradientUI(); renderAll(); markDirty(); });
@@ -820,64 +735,8 @@
     refreshGradientFields(); renderAll(); markDirty();
   };
 
-  function seedMobileFromDesktopOnce(){
-    var s = cur();
-    if(s.mobileSeededFromDesktop) return;
-
-    s.mobileGradient = JSON.parse(JSON.stringify(s.gradient || defaultGradient()));
-    s.mobileContentSide = s.contentSide;
-    s.mobileTextAlign = s.textAlign;
-    s.mobileContentAlign = s.contentAlign;
-    s.mobileContentPadding = s.contentPadding;
-    s.mobileContentShiftX = s.contentShiftX;
-    s.mobileContentShiftY = s.contentShiftY;
-    s.mobileGapEyebrow = s.gapEyebrow;
-    s.mobileGapHeading = s.gapHeading;
-    s.mobileGapSub = s.gapSub;
-    s.mobileContentWidth = s.contentWidth;
-
-    s.mobileEyebrowSize = s.eyebrowSize;
-    s.mobileHeadingSize = s.headingSize;
-    s.mobileSubSize = s.subSize;
-    s.mobileButtonFontSize = s.buttonFontSize;
-    s.mobileEyebrowLetterSpacing = s.eyebrowLetterSpacing;
-    s.mobileHeadingLetterSpacing = s.headingLetterSpacing;
-    s.mobileSubLetterSpacing = s.subLetterSpacing;
-    s.mobileButtonLetterSpacing = s.buttonLetterSpacing;
-
-    s.mobileEyebrowShiftX = s.eyebrowShiftX;
-    s.mobileEyebrowShiftY = s.eyebrowShiftY;
-    s.mobileHeadingShiftX = s.headingShiftX;
-    s.mobileHeadingShiftY = s.headingShiftY;
-    s.mobileSubShiftX = s.subShiftX;
-    s.mobileSubShiftY = s.subShiftY;
-    s.mobileButtonShiftX = s.buttonShiftX;
-    s.mobileButtonShiftY = s.buttonShiftY;
-    s.mobileButtonWidth = s.buttonWidth;
-
-    s.mobileContentBgEnabled = s.contentBgEnabled;
-    s.mobileContentBgColor = s.contentBgColor;
-    s.mobileContentBgOpacity = s.contentBgOpacity;
-    s.mobileContentBgPadding = s.contentBgPadding;
-    s.mobileContentBgRadius = s.contentBgRadius;
-    s.mobileContentBgShadowEnabled = s.contentBgShadowEnabled;
-    s.mobileContentBgShadowColor = s.contentBgShadowColor;
-    s.mobileContentBgShadowOpacity = s.contentBgShadowOpacity;
-    s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
-    s.mobileContentBgShadowY = s.contentBgShadowY;
-
-    // Do not literally reuse a wide desktop crop on a phone.
-    // Start with a usable portrait framing, then let mobile remain independent.
-    s.mobileX = 50;
-    s.mobileY = 38;
-    s.mobileWidth = (s.desktopFit==='contain' || s.desktopFit==='width') ? 150 : 120;
-
-    s.mobileSeededFromDesktop = true;
-    markDirty();
-  }
-
   el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
-  el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
+  el('jcsMobileMode').onclick=function(){ mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
 
   document.querySelectorAll('.jcs-tab').forEach(function(t){
