@@ -633,10 +633,53 @@
     if(!s){ el('jcsStopEditor').innerHTML=''; return; }
     var wrap = el('jcsStopEditor');
     wrap.innerHTML =
-      '<div class="row"><label>Colour</label><input id="jcsStopColor" type="color" value="'+s.color+'"><span></span></div>' +
+      '<div class="row color-row"><label>Colour</label><div class="jcs-stop-color-control"><input id="jcsStopColor" type="color" value="'+s.color+'" title="Pick gradient colour"><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" aria-label="Gradient colour hex value"></div><span></span></div>' +
+      '<div class="jcs-stop-presets" aria-label="Quick gradient colours">' +
+        '<button type="button" data-color="#FFFFFF" style="--preset:#FFFFFF" title="White"></button>' +
+        '<button type="button" data-color="#000000" style="--preset:#000000" title="Black"></button>' +
+        '<button type="button" data-color="#D70015" style="--preset:#D70015" title="Wheels red"></button>' +
+        '<button type="button" data-color="#1E3A8A" style="--preset:#1E3A8A" title="Dark blue"></button>' +
+        '<button type="button" data-color="#2563EB" style="--preset:#2563EB" title="Blue"></button>' +
+        '<button type="button" data-color="#E5E7EB" style="--preset:#E5E7EB" title="Light grey"></button>' +
+      '</div>' +
       '<div class="row"><label>Opacity</label><input id="jcsStopOpacity" type="range" min="0" max="100" value="'+Math.round(s.opacity*100)+'"><span id="jcsStopOpacityVal">'+Math.round(s.opacity*100)+'%</span></div>' +
       '<div class="row"><label>Position</label><input id="jcsStopPos" type="range" min="0" max="100" value="'+s.pos+'"><button class="del" id="jcsStopDel" '+(g.stops.length<=2?'disabled':'')+'>Delete stop</button></div>';
-    el('jcsStopColor').addEventListener('input', function(){ s.color=this.value; renderGradientUI(); renderAll(); markDirty(); });
+
+    function paintStopColor(value){
+      var v = String(value || '').trim();
+      if(/^#[0-9a-fA-F]{6}$/.test(v) === false) return false;
+      s.color = v.toUpperCase();
+      var picker = el('jcsStopColor');
+      var hex = el('jcsStopHex');
+      if(picker && picker.value.toUpperCase() !== s.color) picker.value = s.color;
+      if(hex && hex.value.toUpperCase() !== s.color) hex.value = s.color;
+      var bar = el('jcsGradBar');
+      if(bar && bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')';
+      var handle = bar ? bar.querySelector('.jcs-stop-handle.selected') : null;
+      if(handle) handle.style.setProperty('--swatch', s.color);
+      renderAll(); markDirty();
+      return true;
+    }
+
+    // Do NOT rebuild the whole gradient editor while the native colour picker is open.
+    // Rebuilding it on every input event was destroying the picker and made colours hard to change.
+    el('jcsStopColor').addEventListener('input', function(){ paintStopColor(this.value); });
+
+    el('jcsStopHex').addEventListener('input', function(){
+      var v=this.value.trim();
+      if(v && v.charAt(0)!=='#') v='#'+v;
+      if(/^#[0-9a-fA-F]{6}$/.test(v)) paintStopColor(v);
+    });
+    el('jcsStopHex').addEventListener('blur', function(){
+      var v=this.value.trim();
+      if(v && v.charAt(0)!=='#') v='#'+v;
+      if(!paintStopColor(v)) this.value=s.color.toUpperCase();
+    });
+
+    wrap.querySelectorAll('.jcs-stop-presets button').forEach(function(btn){
+      btn.addEventListener('click', function(){ paintStopColor(this.dataset.color); });
+    });
+
     el('jcsStopOpacity').addEventListener('input', function(){ s.opacity = Number(this.value)/100; el('jcsStopOpacityVal').textContent = this.value+'%'; renderAll(); markDirty();
       var bar=el('jcsGradBar'); if(bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')'; });
     el('jcsStopPos').addEventListener('input', function(){ s.pos = Number(this.value); renderGradientUI(); renderAll(); markDirty(); });
