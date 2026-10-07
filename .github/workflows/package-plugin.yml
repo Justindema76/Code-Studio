@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'justinnovate-code-studio/**'
       - '.github/workflows/package-plugin.yml'
   workflow_dispatch:
 
