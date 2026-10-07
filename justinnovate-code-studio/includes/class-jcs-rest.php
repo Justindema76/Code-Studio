@@ -341,15 +341,42 @@ class JCS_REST {
 		return $this->normalize_translation_output( $out );
 	}
 
+	/**
+	 * Local translations for common Wheels banner copy. These are used before
+	 * external services so a temporary Google/MyMemory outage cannot block the
+	 * editor for known production copy.
+	 */
+	private function local_french_translate( $text ) {
+		$key = trim( preg_replace( '/\\s+/u', ' ', (string) $text ) );
+		$map = array(
+			'MAKE YOUR LOT STAND OUT' => 'FAITES-VOUS REMARQUER',
+			'FLAGS & BANNERS BUILT TO GET NOTICED' => 'DRAPEAUX ET BANNIÈRES CONÇUS POUR ATTIRER L’ATTENTION',
+			'High-visibility dealership flags, banners and display hardware for your lot, showroom and next sales event.' => 'Des drapeaux, bannières et supports d’affichage à grande visibilité pour votre concession, votre salle d’exposition et vos prochains événements promotionnels.',
+			'SHOP FLAGS & BANNERS' => 'VOIR LES DRAPEAUX ET BANNIÈRES',
+			'Promotional dealership flags and display hardware' => 'Drapeaux promotionnels et supports d’affichage pour concessionnaires',
+		);
+
+		return isset( $map[ $key ] ) ? $map[ $key ] : '';
+	}
+
 	private function translate_text( $text ) {
 		$text = (string) $text;
 		if ( '' === trim( $text ) ) {
 			return $text;
 		}
 
-		$google = $this->google_translate( $text );
-		if ( $this->translation_looks_complete( $text, $google ) ) {
-			return $google;
+		$local = $this->local_french_translate( $text );
+		if ( '' !== $local ) {
+			return $local;
+		}
+
+		// Retry Google once because the public endpoint occasionally returns a
+		// transient empty/invalid response from shared hosting IPs.
+		for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+			$google = $this->google_translate( $text );
+			if ( $this->translation_looks_complete( $text, $google ) ) {
+				return $google;
+			}
 		}
 
 		$fallback = $this->fallback_translate( $text );
@@ -423,18 +450,12 @@ class JCS_REST {
 		}
 		unset( $slide );
 
-		if ( ! empty( $failures ) ) {
-			return new WP_Error(
-				'jcs_translation_incomplete',
-				'Translation could not complete these fields: ' . implode( ', ', $failures ) . '. Nothing was saved.',
-				array( 'status' => 502 )
-			);
-		}
-
 		return rest_ensure_response(
 			array(
 				'data'       => $data,
-				'translated' => true,
+				'translated' => empty( $failures ),
+				'partial'    => ! empty( $failures ),
+				'failures'   => $failures,
 			)
 		);
 	}
