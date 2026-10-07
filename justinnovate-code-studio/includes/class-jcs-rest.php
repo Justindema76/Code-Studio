@@ -351,8 +351,11 @@ class JCS_REST {
 		$map = array(
 			'MAKE YOUR LOT STAND OUT' => 'FAITES-VOUS REMARQUER',
 			'FLAGS & BANNERS BUILT TO GET NOTICED' => 'DRAPEAUX ET BANNIÈRES CONÇUS POUR ATTIRER L’ATTENTION',
+			'FLAGS & HARDWARE BUILT TO GET NOTICED' => 'DRAPEAUX ET MATÉRIEL CONÇUS POUR ATTIRER L’ATTENTION',
 			'High-visibility dealership flags, banners and display hardware for your lot, showroom and next sales event.' => 'Des drapeaux, bannières et supports d’affichage à grande visibilité pour votre concession, votre salle d’exposition et vos prochains événements promotionnels.',
+			'High-visibility dealership flags and durable display hardware for your lot, showroom and sales events.' => 'Des drapeaux de concession à grande visibilité et du matériel d’affichage durable pour votre lot, votre salle d’exposition et vos événements de vente.',
 			'SHOP FLAGS & BANNERS' => 'VOIR LES DRAPEAUX ET BANNIÈRES',
+			'SHOP FLAGS & HARDWARE' => 'VOIR LES DRAPEAUX ET LE MATÉRIEL',
 			'Promotional dealership flags and display hardware' => 'Drapeaux promotionnels et supports d’affichage pour concessionnaires',
 		);
 
