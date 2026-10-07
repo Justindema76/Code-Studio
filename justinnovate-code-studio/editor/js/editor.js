@@ -1164,7 +1164,7 @@ googleFontsLink() + '\n' +
     btn.disabled=true; var old=btn.textContent; btn.textContent='Translating…'; el('jcsStatus').textContent='Translating to French…';
     fetch(DATA.translateUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WP-Nonce':DATA.nonce},body:JSON.stringify({sourceLanguage:'en'})})
       .then(function(r){if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
-      .then(function(res){ if(!res.data || res.translated!==true) throw new Error(res.message || 'No translation returned'); slides=res.data.map(function(x){return Object.assign(defaults(),x)}); active=0; loadFields(); renderAll(); markDirty(); el('jcsStatus').textContent='All banner text translated to French — review and Save'; })
+      .then(function(res){ if(!res.data) throw new Error(res.message || 'No translation returned'); slides=res.data.map(function(x){return Object.assign(defaults(),x)}); active=0; loadFields(); renderAll(); markDirty(); el('jcsStatus').textContent=res.partial?'French translation completed with a few fields left unchanged — review and Save':'All banner text translated to French — review and Save'; })
       .catch(function(err){window.alert('Translation failed: '+err.message); el('jcsStatus').textContent='Translation failed';})
       .finally(function(){btn.disabled=false;btn.textContent=old;});
   };
