@@ -261,11 +261,13 @@ class JCS_Render {
 		$out .= 'style="--jcs-desktop-height:' . (int) $s0['desktopHeight'] . 'px;--jcs-mobile-height:' . (int) $s0['mobileHeight'] . 'px;" ';
 		$out .= 'aria-roledescription="carousel" aria-label="' . esc_attr__( 'Featured', 'jcs' ) . '">';
 		$out .= '<div class="csx-track">' . implode( '', $slides_html ) . '</div>';
-		$out .= '<span class="csx-arrow csx-prev" role="button" tabindex="0" aria-label="' . esc_attr__( 'Previous slide', 'jcs' ) . '" ';
-		$out .= 'style="background:rgba(' . self::hex_rgb( $s0['arrowBg'] ) . ',' . ( $s0['arrowBgOpacity'] / 100 ) . ');border-color:rgba(' . self::hex_rgb( $s0['arrowBorderColor'] ) . ',' . ( $s0['arrowBorderOpacity'] / 100 ) . ');color:' . esc_attr( $s0['arrowIconColor'] ) . ';">&#8249;</span>';
-		$out .= '<span class="csx-arrow csx-next" role="button" tabindex="0" aria-label="' . esc_attr__( 'Next slide', 'jcs' ) . '" ';
-		$out .= 'style="background:rgba(' . self::hex_rgb( $s0['arrowBg'] ) . ',' . ( $s0['arrowBgOpacity'] / 100 ) . ');border-color:rgba(' . self::hex_rgb( $s0['arrowBorderColor'] ) . ',' . ( $s0['arrowBorderOpacity'] / 100 ) . ');color:' . esc_attr( $s0['arrowIconColor'] ) . ';">&#8250;</span>';
-		$out .= '<div class="csx-dash-track" data-dash-color="' . esc_attr( $s0['dashColor'] ) . '"></div>';
+		if ( count( $slides ) > 1 ) {
+			$out .= '<span class="csx-arrow csx-prev" role="button" tabindex="0" aria-label="' . esc_attr__( 'Previous slide', 'jcs' ) . '" ';
+			$out .= 'style="background:rgba(' . self::hex_rgb( $s0['arrowBg'] ) . ',' . ( $s0['arrowBgOpacity'] / 100 ) . ');border-color:rgba(' . self::hex_rgb( $s0['arrowBorderColor'] ) . ',' . ( $s0['arrowBorderOpacity'] / 100 ) . ');color:' . esc_attr( $s0['arrowIconColor'] ) . ';">&#8249;</span>';
+			$out .= '<span class="csx-arrow csx-next" role="button" tabindex="0" aria-label="' . esc_attr__( 'Next slide', 'jcs' ) . '" ';
+			$out .= 'style="background:rgba(' . self::hex_rgb( $s0['arrowBg'] ) . ',' . ( $s0['arrowBgOpacity'] / 100 ) . ');border-color:rgba(' . self::hex_rgb( $s0['arrowBorderColor'] ) . ',' . ( $s0['arrowBorderOpacity'] / 100 ) . ');color:' . esc_attr( $s0['arrowIconColor'] ) . ';">&#8250;</span>';
+			$out .= '<div class="csx-dash-track" data-dash-color="' . esc_attr( $s0['dashColor'] ) . '"></div>';
+		}
 		$out .= '</section>';
 
 		return $out;
