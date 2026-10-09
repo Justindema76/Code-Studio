@@ -1,3 +1,11 @@
+## 0.3.40
+- Embed code now starts every copy of a banner on the page, so a hidden or duplicate copy can no longer stop the visible one from sliding.
+- New Banner settings: corner radius (desktop and mobile), the width where the mobile layout starts (default 900px), and an option to turn off removing Magento's page padding.
+- The exported banner has no outside margin, so theme rules such as `section{margin-bottom}` no longer add a gap under it.
+- Arrows use z-index 7 instead of the maximum, so they no longer sit above site headers, menus and chat buttons.
+- One-slide banners no longer throw a script error.
+- Canvas: "Hero 70% (920)" width button and a 600px minimum preview width; the preview window adds a Hero 920 size.
+
 ## 0.3.17
 - Fixes corrupted title text such as `IDEASn&` from older imports.
 - Preserves real line breaks entered in Heading/Sub-heading fields.

@@ -55,7 +55,8 @@
             '</div>' +
             '<div class="jcs-width-row" id="jcsWidthRow">' +
               '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">1920px</span>' +
-              '<input id="jcsPreviewWidth" type="range" min="1360" max="3000" step="20" value="1920">' +
+              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="1920">' +
+              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap">Hero 70% (920)</button>' +
             '</div>' +
             '<div class="jcs-stage" id="jcsStage">' +
               '<div class="jcs-canvas-scale-wrap" id="jcsScaleWrap">' +
@@ -290,6 +291,12 @@
             '<label>Desktop height (px)</label><input id="fDeskHeight" type="number" min="200" max="1600" step="1">' +
             '<label>Mobile height (px)</label><input id="fMobHeight" type="number" min="200" max="1600" step="1">' +
             '<label>Autoplay speed (ms)</label><input id="fAutoplay" type="number" min="1000" step="100">' +
+            '<div class="jcs-section-label">Banner corners</div>' +
+            '<label>Corner radius, desktop (px)</label><input id="fBannerRadius" type="number" min="0" max="200" step="1">' +
+            '<label>Corner radius, mobile (px) &mdash; blank = same as desktop</label><input id="fMobileBannerRadius" type="number" min="0" max="200" step="1" placeholder="Same as desktop">' +
+            '<div class="jcs-section-label">Layout</div>' +
+            '<label>Switch to mobile layout at (px wide or less)</label><input id="fMobileBreakpoint" type="number" min="320" max="2000" step="1">' +
+            '<div class="jcs-checkbox-row"><input id="fResetHostPadding" type="checkbox"><label for="fResetHostPadding">Remove Magento page padding (full-width pages)</label></div>' +
             '<div class="jcs-checkbox-row"><input id="fPauseHover" type="checkbox"><label for="fPauseHover">Pause on hover</label></div>' +
             '<button class="jcs-btn danger" id="jcsRemove" style="width:100%;margin-top:18px;">Remove this banner</button>' +
           '</div>' +
@@ -300,7 +307,7 @@
           '<div class="jcs-preview-head">' +
             '<div><h2 id="jcsPreviewTitle">Actual output preview</h2><p>This renders the exact exported HTML/CSS at the selected viewport width.</p></div>' +
             '<div class="jcs-preview-actions">' +
-              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="1440">Desktop 1440</button></div>' +
+              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="920">Hero 70% 920</button><button data-preview-width="1440">Desktop 1440</button></div>' +
               '<button class="jcs-btn secondary" id="jcsPreviewRefresh" type="button">Refresh</button>' +
               '<button class="jcs-modal-close" id="jcsClosePreview" type="button" aria-label="Close">&times;</button>' +
             '</div>' +
@@ -359,7 +366,8 @@
       mobileContentBgEnabled:false, mobileContentBgColor:'#ffffff', mobileContentBgOpacity:100, mobileContentBgPadding:24, mobileContentBgRadius:8,
       contentBgShadowEnabled:false, contentBgShadowColor:'#000000', contentBgShadowOpacity:20, contentBgShadowBlur:24, contentBgShadowY:10,
       mobileContentBgShadowEnabled:false, mobileContentBgShadowColor:'#000000', mobileContentBgShadowOpacity:20, mobileContentBgShadowBlur:24, mobileContentBgShadowY:10,
-      desktopHeight:490, mobileHeight:620, autoplay:5200, pauseHover:true
+      desktopHeight:490, mobileHeight:620, autoplay:5200, pauseHover:true,
+      bannerRadius:0, mobileBannerRadius:null, mobileBreakpoint:900, resetHostPadding:true
     };
   }
 
@@ -435,6 +443,15 @@
     }
   });
   var instanceId = 'jcs' + (DATA.postId || Math.random().toString(36).slice(2,8));
+  var bannerRoot = null; // slide that holds banner-wide settings while the canvas renders a single slide
+  function bannerSettings(){
+    var b = bannerRoot || slides[0] || {};
+    var r = Math.max(0, Number(b.bannerRadius) || 0);
+    var mr = (b.mobileBannerRadius === null || b.mobileBannerRadius === '' || typeof b.mobileBannerRadius === 'undefined') ? r : Math.max(0, Number(b.mobileBannerRadius) || 0);
+    var bp = Math.max(320, Math.min(2000, Number(b.mobileBreakpoint) || 900));
+    return { radius:r, mobileRadius:mr, breakpoint:bp, resetHostPadding: b.resetHostPadding !== false };
+  }
+  function setBannerSetting(key, value){ slides.forEach(function(sl){ sl[key] = value; }); markDirty(); renderAll(); }
   var active=0, mode='desktop', selectedStop=0, dirty=false, localeOps=[];
 
   function cur(){ return slides[active]; }
@@ -507,6 +524,11 @@
     Object.keys(simpleFields).forEach(function(id){ var f=el(id); if(!f) return; var key=simpleFields[id]; if(key==='heading'||key==='subheading'||key==='eyebrow'||key==='buttonText') s[key]=normalizeStoredText(s[key]); f.value = s[key]; });
     Object.keys(rangeFields).forEach(function(id){ var f=el(id); if(!f) return; f.value = s[rangeFields[id]]; var v=el(id+'Val'); if(v) v.textContent=valSuffix(id, f.value); });
     el('fPauseHover').checked = !!s.pauseHover;
+    var bs = bannerSettings(), b0 = slides[0] || {};
+    el('fBannerRadius').value = bs.radius;
+    el('fMobileBannerRadius').value = (b0.mobileBannerRadius === null || typeof b0.mobileBannerRadius === 'undefined') ? '' : b0.mobileBannerRadius;
+    el('fMobileBreakpoint').value = bs.breakpoint;
+    el('fResetHostPadding').checked = bs.resetHostPadding;
     el('fBtnNewTab').checked = !!s.buttonNewTab;
     el('fDeskBgNewTab').checked = !!s.desktopBgNewTab;
     el('fMobBgNewTab').checked = !!s.mobileBgNewTab;
@@ -659,6 +681,10 @@
     });
   });
   el('fAutoplay').addEventListener('change', function(){ cur().autoplay = Number(el('fAutoplay').value); markDirty(); renderCode(); });
+  el('fBannerRadius').addEventListener('input', function(){ setBannerSetting('bannerRadius', Math.max(0, Math.min(200, Number(this.value) || 0))); });
+  el('fMobileBannerRadius').addEventListener('input', function(){ setBannerSetting('mobileBannerRadius', this.value === '' ? null : Math.max(0, Math.min(200, Number(this.value) || 0))); });
+  el('fMobileBreakpoint').addEventListener('change', function(){ var v = Math.max(320, Math.min(2000, Number(this.value) || 900)); this.value = v; setBannerSetting('mobileBreakpoint', v); });
+  el('fResetHostPadding').addEventListener('change', function(){ setBannerSetting('resetHostPadding', !!this.checked); });
 
   // ---------- gradient editor ----------
   el('fGradType').addEventListener('change', function(){ curGradient().type = el('fGradType').value; renderGradientUI(); renderAll(); markDirty(); });
@@ -779,7 +805,9 @@
     var selectedSlide = originalSlides[originalActive] || originalSlides[0];
     slides = [selectedSlide];
     active = 0;
+    bannerRoot = originalSlides[0];
     var code = generateCode();
+    bannerRoot = null;
     slides = originalSlides;
     active = originalActive;
     return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
@@ -903,6 +931,7 @@
   el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
+  el('jcsHeroWidth').onclick = function(){ el('jcsPreviewWidth').value = 920; el('jcsPreviewWidthVal').textContent = '920px'; renderCanvas(); };
 
   document.querySelectorAll('.jcs-tab').forEach(function(t){
     t.addEventListener('click', function(){
@@ -1016,26 +1045,27 @@
 
   function generateCode(){
     var s0 = slides[0];
+    var bs = bannerSettings();
     var slideHtml = slides.map(slideMarkup).join('\n');
     return '<!-- Built with Justinnovate Code Studio — self-contained, paste anywhere -->\n' +
 '<!-- JCS-PROJECT-DATA-BEGIN\n'+JSON.stringify(slides).replace(/</g,'\\u003c')+'\nJCS-PROJECT-DATA-END -->\n' +
 '<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
 googleFontsLink() + '\n' +
-'<section class="csx-banner-root'+(slides.length<=1?' csx-single-slide':'')+'" id="'+instanceId+'" style="--jcs-desktop-height:'+s0.desktopHeight+'px;--jcs-mobile-height:'+s0.mobileHeight+'px;" aria-roledescription="carousel" aria-label="Featured">\n' +
+'<section class="csx-banner-root'+(slides.length<=1?' csx-single-slide':'')+'" id="'+instanceId+'" style="--jcs-desktop-height:'+s0.desktopHeight+'px;--jcs-mobile-height:'+s0.mobileHeight+'px;--jcs-radius-d:'+bs.radius+'px;--jcs-radius-m:'+bs.mobileRadius+'px;" aria-roledescription="carousel" aria-label="Featured">\n' +
 '  <div class="csx-track">'+slideHtml+'\n  </div>\n' +
 (slides.length>1 ?
-'  <button type="button" class="jcsx-nav jcsx-nav-prev" aria-label="Previous slide" style="position:absolute!important;display:flex!important;align-items:center!important;justify-content:center!important;top:50%!important;left:20px!important;right:auto!important;transform:translateY(-50%)!important;z-index:2147483000!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;margin:0!important;padding:0!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;border-radius:9999px!important;background:rgba('+hexRgb(s0.arrowBg)+','+(s0.arrowBgOpacity/100)+')!important;border:1px solid rgba('+hexRgb(s0.arrowBorderColor)+','+(s0.arrowBorderOpacity/100)+')!important;color:'+s0.arrowIconColor+'!important;font:400 28px/1 Arial,sans-serif!important;text-indent:0!important;text-transform:none!important;appearance:none!important;-webkit-appearance:none!important;cursor:pointer!important;">&#8249;</button>\n' +
-'  <button type="button" class="jcsx-nav jcsx-nav-next" aria-label="Next slide" style="position:absolute!important;display:flex!important;align-items:center!important;justify-content:center!important;top:50%!important;right:20px!important;left:auto!important;transform:translateY(-50%)!important;z-index:2147483000!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;margin:0!important;padding:0!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;border-radius:9999px!important;background:rgba('+hexRgb(s0.arrowBg)+','+(s0.arrowBgOpacity/100)+')!important;border:1px solid rgba('+hexRgb(s0.arrowBorderColor)+','+(s0.arrowBorderOpacity/100)+')!important;color:'+s0.arrowIconColor+'!important;font:400 28px/1 Arial,sans-serif!important;text-indent:0!important;text-transform:none!important;appearance:none!important;-webkit-appearance:none!important;cursor:pointer!important;">&#8250;</button>\n' +
+'  <button type="button" class="jcsx-nav jcsx-nav-prev" aria-label="Previous slide" style="position:absolute!important;display:flex!important;align-items:center!important;justify-content:center!important;top:50%!important;left:20px!important;right:auto!important;transform:translateY(-50%)!important;z-index:7!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;margin:0!important;padding:0!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;border-radius:9999px!important;background:rgba('+hexRgb(s0.arrowBg)+','+(s0.arrowBgOpacity/100)+')!important;border:1px solid rgba('+hexRgb(s0.arrowBorderColor)+','+(s0.arrowBorderOpacity/100)+')!important;color:'+s0.arrowIconColor+'!important;font:400 28px/1 Arial,sans-serif!important;text-indent:0!important;text-transform:none!important;appearance:none!important;-webkit-appearance:none!important;cursor:pointer!important;">&#8249;</button>\n' +
+'  <button type="button" class="jcsx-nav jcsx-nav-next" aria-label="Next slide" style="position:absolute!important;display:flex!important;align-items:center!important;justify-content:center!important;top:50%!important;right:20px!important;left:auto!important;transform:translateY(-50%)!important;z-index:7!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;margin:0!important;padding:0!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;border-radius:9999px!important;background:rgba('+hexRgb(s0.arrowBg)+','+(s0.arrowBgOpacity/100)+')!important;border:1px solid rgba('+hexRgb(s0.arrowBorderColor)+','+(s0.arrowBorderOpacity/100)+')!important;color:'+s0.arrowIconColor+'!important;font:400 28px/1 Arial,sans-serif!important;text-indent:0!important;text-transform:none!important;appearance:none!important;-webkit-appearance:none!important;cursor:pointer!important;">&#8250;</button>\n' +
 '  <div class="csx-dash-track"></div>\n' : '') +
 '</section>\n\n' +
 '<style>\n' +
-'#'+instanceId+'{position:relative;width:100%;height:var(--jcs-desktop-height,490px);min-height:0!important;overflow:hidden;background:#000;font-family:Inter,sans-serif;isolation:isolate;box-sizing:border-box}\n' +
+'#'+instanceId+'{position:relative;width:100%;height:var(--jcs-desktop-height,490px);min-height:0!important;overflow:hidden!important;background:#000;font-family:Inter,sans-serif;isolation:isolate;box-sizing:border-box;margin:0!important;padding:0!important;border-radius:var(--jcs-radius-d,0px)!important}\n' +
 '#'+instanceId+' *,'+'#'+instanceId+' *::before,'+'#'+instanceId+' *::after{box-sizing:border-box!important}\n' +
 '#'+instanceId+' .csx-heading,#'+instanceId+' .csx-sub,#'+instanceId+' .csx-eyebrow,#'+instanceId+' .csx-button{font-style:normal!important;text-indent:0!important;text-transform:none!important;text-decoration:none!important;max-width:none!important;float:none!important;position:relative!important;white-space:normal!important;vertical-align:baseline!important}\n' +
 '#'+instanceId+' .csx-heading,#'+instanceId+' .csx-sub{padding:0!important;border:0!important;background:transparent!important}\n' +
    '#'+instanceId+' .csx-eyebrow{line-height:1.05!important}\n' +
    '#'+instanceId+' .csx-button{line-height:1!important}\n' +
-'#'+instanceId+' .jcsx-nav{display:flex!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;z-index:2147483000!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;min-width:44px!important;max-width:44px!important;width:44px!important;min-height:44px!important;max-height:44px!important;height:44px!important;aspect-ratio:1/1!important;border-style:solid!important;border-width:1px!important;border-radius:9999px!important;font-family:Arial,sans-serif!important;font-weight:400!important;font-size:28px!important;line-height:1!important;letter-spacing:0!important;white-space:nowrap!important;overflow:hidden!important;appearance:none!important;-webkit-appearance:none!important}\n' +
+'#'+instanceId+' .jcsx-nav{display:flex!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;z-index:7!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;min-width:44px!important;max-width:44px!important;width:44px!important;min-height:44px!important;max-height:44px!important;height:44px!important;aspect-ratio:1/1!important;border-style:solid!important;border-width:1px!important;border-radius:9999px!important;font-family:Arial,sans-serif!important;font-weight:400!important;font-size:28px!important;line-height:1!important;letter-spacing:0!important;white-space:nowrap!important;overflow:hidden!important;appearance:none!important;-webkit-appearance:none!important}\n' +
 '#'+instanceId+' .jcsx-nav::before,#'+instanceId+' .jcsx-nav::after{content:none!important;display:none!important}\n' +
 '#'+instanceId+' .csx-bg-link{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;text-decoration:none!important;z-index:3!important;cursor:pointer!important}\n' +
 '#'+instanceId+' .csx-bg-link::before,#'+instanceId+' .csx-bg-link::after{content:none!important;display:none!important}\n' +
@@ -1053,7 +1083,7 @@ googleFontsLink() + '\n' +
 '#'+instanceId+' .csx-heading{margin:0 0 16px!important;text-shadow:0 2px 18px rgba(0,0,0,.4)}\n' +
 '#'+instanceId+' .csx-sub{margin:0 0 28px!important}\n' +
 '#'+instanceId+' .csx-button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 30px;border-radius:2px;font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}\n' +
-'#'+instanceId+' .jcsx-nav{position:absolute!important;top:50%!important;z-index:2147483000!important;width:44px!important;height:44px!important;border-radius:50%!important;font-size:28px!important;line-height:1!important;cursor:pointer!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}\n' +
+'#'+instanceId+' .jcsx-nav{position:absolute!important;top:50%!important;z-index:7!important;width:44px!important;height:44px!important;border-radius:50%!important;font-size:28px!important;line-height:1!important;cursor:pointer!important;transform:translateY(-50%)!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}\n' +
 '#'+instanceId+' .jcsx-nav-prev{left:20px!important;right:auto!important}#'+instanceId+' .jcsx-nav-next{right:20px!important;left:auto!important}\n' +
 '#'+instanceId+' .csx-dash-track{position:absolute;left:64px;bottom:24px;z-index:6;display:flex;gap:6px}\n' +
 '#'+instanceId+' .csx-dash{width:34px;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden;cursor:pointer}\n' +
@@ -1061,9 +1091,9 @@ googleFontsLink() + '\n' +
 '#'+instanceId+' .csx-dash.is-active span{transform:scaleX(1)}\n' +
 '#'+instanceId+' .csx-dash.is-active.is-animating span{transition:transform '+s0.autoplay+'ms linear}\n' +
 '#'+instanceId+' .csx-dash.is-filled span{transform:scaleX(1);transition:none}\n' +
-'@media(max-width:900px){\n' +
+'@media(max-width:'+bs.breakpoint+'px){\n' +
 '  #'+instanceId+' .csx-track{height:100%!important}\n' +
-'  #'+instanceId+'{height:var(--jcs-mobile-height,620px)!important}\n' +
+'  #'+instanceId+'{height:var(--jcs-mobile-height,620px)!important;border-radius:var(--jcs-radius-m,0px)!important}\n' +
 '  #'+instanceId+' .csx-bg{background-image:var(--jcs-mobile-bg)!important;background-size:var(--jcs-mobile-bg-size,100% auto)!important;background-position:var(--jcs-mobile-bg-pos,50% 23%)!important;background-attachment:scroll!important;background-repeat:no-repeat!important}\n' +
 '  #'+instanceId+' .csx-bg-link-desktop{display:none!important}\n' +
 '  #'+instanceId+' .csx-bg-link-mobile{display:block!important}\n' +
@@ -1082,12 +1112,15 @@ googleFontsLink() + '\n' +
 '</style>\n\n' +
 '<script>\n' +
 '(function(){\n' +
-'  var root=document.getElementById("'+instanceId+'");\n' +
+'  var roots=document.querySelectorAll(\'[id="'+instanceId+'"]\');\n' +
+'  for(var r=0;r<roots.length;r++)init(roots[r]);\n' +
+'  function init(root){\n' +
 '  if(!root||root.dataset.jcsInit)return; root.dataset.jcsInit="1";\n' +
-'  var hostMain=root.closest?root.closest("main#maincontent.page-main-full-width"):null;if(hostMain){hostMain.style.setProperty("padding-top","0","important");hostMain.style.setProperty("padding-bottom","0","important");}\n' +
+(bs.resetHostPadding ? '  var hostMain=root.closest?root.closest("main#maincontent.page-main-full-width"):null;if(hostMain){hostMain.style.setProperty("padding-top","0","important");hostMain.style.setProperty("padding-bottom","0","important");}\n' : '') +
 '  var track=root.querySelector(".csx-track");\n' +
 '  var slides=[].slice.call(track.querySelectorAll(".csx-slide"));\n' +
 '  var prev=root.querySelector(".jcsx-nav-prev"), next=root.querySelector(".jcsx-nav-next"), dashTrack=root.querySelector(".csx-dash-track");\n' +
+'  if(slides.length<2||!dashTrack)return;\n' +
 '  var current=0,timer=null,AUTOPLAY='+s0.autoplay+';\n' +
 '  slides.forEach(function(_,i){ var d=document.createElement("div"); d.className="csx-dash"; d.innerHTML="<span></span>"; d.onclick=function(){go(i,true)}; dashTrack.appendChild(d); });\n' +
 '  var dashes=[].slice.call(dashTrack.querySelectorAll(".csx-dash"));\n' +
@@ -1109,6 +1142,7 @@ googleFontsLink() + '\n' +
 '  track.addEventListener("touchstart",function(e){sx=e.touches[0].clientX},{passive:true});\n' +
 '  track.addEventListener("touchend",function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>40)go(dx<0?current+1:current-1,true)},{passive:true});\n' +
 '  render();restart();\n' +
+'  }\n' +
 '})();\n' +
 '<\/script>';
   }
@@ -1137,7 +1171,7 @@ googleFontsLink() + '\n' +
     if(modal && !modal.hidden){
       var frame=el('jcsPreviewFrame');
       var w=parseInt(el('jcsPreviewDevice').style.width,10)||390;
-      var h=w<=900 ? Number(slides[0].mobileHeight||620) : Number(slides[0].desktopHeight||490);
+      var h=w<=bannerSettings().breakpoint ? Number(slides[0].mobileHeight||620) : Number(slides[0].desktopHeight||490);
       frame.srcdoc=previewDocument(h);
     }
     writeLivePreviewWindow();
@@ -1172,7 +1206,7 @@ googleFontsLink() + '\n' +
 
   function setPreviewWidth(width){
     width=Number(width)||390;
-    var outputHeight = width <= 900 ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
+    var outputHeight = width <= bannerSettings().breakpoint ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
     var device = el('jcsPreviewDevice');
     var frame = el('jcsPreviewFrame');
     device.style.width=width+'px';
