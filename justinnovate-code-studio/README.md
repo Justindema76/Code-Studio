@@ -4,7 +4,7 @@
 - The exported banner has no outside margin, so theme rules such as `section{margin-bottom}` no longer add a gap under it.
 - Arrows use z-index 7 instead of the maximum, so they no longer sit above site headers, menus and chat buttons.
 - One-slide banners no longer throw a script error.
-- Canvas: "Hero 70% (920)" width button and a 600px minimum preview width; the preview window adds a Hero 920 size.
+- Canvas opens at 920px wide (the homepage hero size) instead of 1920px. "Hero 70% (920)" width button and a 600px minimum preview width; the preview window adds a Hero 920 size.
 
 ## 0.3.17
 - Fixes corrupted title text such as `IDEASn&` from older imports.

@@ -54,8 +54,8 @@
               '<div class="jcs-segmented"><button id="jcsDesktopMode" class="active">Desktop</button><button id="jcsMobileMode">Mobile</button></div>' +
             '</div>' +
             '<div class="jcs-width-row" id="jcsWidthRow">' +
-              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">1920px</span>' +
-              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="1920">' +
+              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">920px</span>' +
+              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="920">' +
               '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap">Hero 70% (920)</button>' +
             '</div>' +
             '<div class="jcs-stage" id="jcsStage">' +
@@ -1230,7 +1230,7 @@ googleFontsLink() + '\n' +
       try{ livePreviewWindow.focus(); }catch(e){}
     }else{
       // Popup blocked: fall back to the embedded exact-size preview.
-      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:1440); updateActualPreview();
+      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:920); updateActualPreview();
     }
   };
   el('jcsClosePreview').onclick=function(){ el('jcsPreviewModal').hidden=true; };
