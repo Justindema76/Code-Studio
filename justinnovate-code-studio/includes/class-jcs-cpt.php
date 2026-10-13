@@ -165,37 +165,19 @@ class JCS_CPT {
 	}
 
 	/**
-	 * Point a wheelsauto.com /ca-en/ link at the same page on another site
-	 * (fr = /ca-fr/, us = /us/). Any other link is left exactly as it is.
-	 */
-	public static function localize_url( $value, $lang ) {
-		if ( ! is_string( $value ) || '' === $value || 'en' === $lang ) {
-			return $value;
-		}
-		$target = ( 'fr' === $lang ) ? '/ca-fr/' : '/us/';
-		return preg_replace( '#^(https?://(?:www\.)?wheelsauto\.com)/ca-en/#i', '$1' . $target, $value );
-	}
-
-	/**
 	 * French / USA banners start as a copy of English, but later English edits
 	 * never reached them, so fields that were empty at copy time stayed empty.
-	 * This fills every EMPTY field from English (links switched to that site);
+	 * This fills every EMPTY field from English (links are switched to the right
+	 * site by the editor, which first checks the page exists there);
 	 * anything already written in French / USA is never overwritten.
 	 */
 	public static function fill_missing_from_english( array $localized, array $english, $lang ) {
-		$url_keys = array( 'buttonUrl', 'desktopBgLink', 'mobileBgLink' );
 		foreach ( $english as $index => $en_slide ) {
 			if ( ! is_array( $en_slide ) ) {
 				continue;
 			}
 			if ( ! isset( $localized[ $index ] ) || ! is_array( $localized[ $index ] ) ) {
-				$copy = $en_slide;
-				foreach ( $url_keys as $key ) {
-					if ( isset( $copy[ $key ] ) ) {
-						$copy[ $key ] = self::localize_url( $copy[ $key ], $lang );
-					}
-				}
-				$localized[ $index ] = $copy;
+				$localized[ $index ] = $en_slide;
 				continue;
 			}
 			foreach ( $en_slide as $key => $value ) {
@@ -205,7 +187,7 @@ class JCS_CPT {
 				$current  = array_key_exists( $key, $localized[ $index ] ) ? $localized[ $index ][ $key ] : null;
 				$is_empty = ( null === $current ) || ( is_string( $current ) && '' === trim( $current ) );
 				if ( $is_empty ) {
-					$localized[ $index ][ $key ] = in_array( $key, $url_keys, true ) ? self::localize_url( $value, $lang ) : $value;
+					$localized[ $index ][ $key ] = $value;
 				}
 			}
 		}

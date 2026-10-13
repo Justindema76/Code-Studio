@@ -1286,17 +1286,62 @@ googleFontsLink() + '\n' +
   function fillFromEnglish(list, english, lang){
     var out = (Array.isArray(list) ? list : []).map(function(s){ return Object.assign({}, s); });
     (english || []).forEach(function(en, i){
-      if(!out[i]){
-        var copy = Object.assign({}, en);
-        SITE_URL_KEYS.forEach(function(k){ if(k in copy) copy[k] = localizeUrl(copy[k], lang); });
-        out[i] = copy; return;
-      }
+      if(!out[i]){ out[i] = Object.assign({}, en); return; }
       Object.keys(en).forEach(function(k){
         if(isBlank(en[k]) || !isBlank(out[i][k])) return;
-        out[i][k] = SITE_URL_KEYS.indexOf(k) >= 0 ? localizeUrl(en[k], lang) : en[k];
+        out[i][k] = en[k];
       });
     });
     return out;
+  }
+  // Switch wheelsauto.com /ca-en/ links to /ca-fr/ or /us/ — but only links whose
+  // page really exists on that site (checked by WordPress). Others are left as-is.
+  function checkLinksUrl(){ return String(DATA.restUrl || '').replace(/\/element\/(\d+)/, '/check-links/$1'); }
+  function switchLinks(list, lang){
+    var plan = [];
+    (list || []).forEach(function(s, i){
+      SITE_URL_KEYS.forEach(function(k){
+        var from = s && s[k], to = localizeUrl(from, lang);
+        if(typeof from === 'string' && to !== from) plan.push({i:i, k:k, from:from, to:to});
+      });
+    });
+    if(!plan.length || lang === 'en') return Promise.resolve({list:list, switched:[], broken:[]});
+    var urls = plan.map(function(x){ return x.to; }).filter(function(u, n, a){ return a.indexOf(u) === n; });
+    return fetch(checkLinksUrl(), {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-WP-Nonce': DATA.nonce}, body: JSON.stringify({urls: urls})})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(res){
+        var ok = (res && res.results) || {}, switched = [], broken = [];
+        plan.forEach(function(x){
+          if(ok[x.to]){ list[x.i][x.k] = x.to; switched.push(x); }
+          else broken.push(x);
+        });
+        return {list:list, switched:switched, broken:broken};
+      });
+  }
+  function showLinkNotice(lang, result){
+    var siteName = lang === 'fr' ? 'French (ca-fr)' : 'USA (us)';
+    var old = document.getElementById('jcsLinkNotice'); if(old) old.remove();
+    if(!result.switched.length && !result.broken.length) return;
+    var box = document.createElement('div');
+    box.id = 'jcsLinkNotice';
+    box.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;max-width:460px;max-height:60vh;overflow:auto;background:#fff;color:#111;border:1px solid #ccc;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px 16px;font:13px/1.45 system-ui,sans-serif';
+    var labels = {buttonUrl:'Button URL', desktopBgLink:'Desktop banner link', mobileBgLink:'Mobile banner link'};
+    var html = '<button type="button" id="jcsLinkNoticeClose" style="float:right;border:0;background:none;font-size:18px;cursor:pointer">&times;</button>';
+    if(result.switched.length) html += '<b>' + result.switched.length + ' link(s) switched to the ' + siteName + ' site.</b><br>Click <b>Save</b> to keep them.';
+    if(result.broken.length){
+      html += (result.switched.length ? '<hr style="border:0;border-top:1px solid #eee;margin:10px 0">' : '') + '<b style="color:#b30f16">' + result.broken.length + ' link(s) have no page on the ' + siteName + ' site</b> — they still go to the Canada English page. Change these by hand:<ul style="margin:6px 0 0 18px;padding:0">';
+      result.broken.forEach(function(x){ html += '<li>Banner ' + (x.i + 1) + ' · ' + (labels[x.k] || x.k) + '<br><span style="color:#666;word-break:break-all">' + esc(x.from) + '</span></li>'; });
+      html += '</ul>';
+    }
+    box.innerHTML = html;
+    document.body.appendChild(box);
+    document.getElementById('jcsLinkNoticeClose').onclick = function(){ box.remove(); };
+  }
+  if(DATA.language === 'fr' || DATA.language === 'us'){
+    switchLinks(slides, DATA.language).then(function(result){
+      if(result.switched.length){ loadFields(); renderAll(); markDirty(); }
+      showLinkNotice(DATA.language, result);
+    }).catch(function(){ /* link check unavailable: leave links as they are */ });
   }
   function fetchSite(lang){
     if(lang === (DATA.language || 'en')) return Promise.resolve(JSON.parse(JSON.stringify(slides)));
@@ -1315,6 +1360,9 @@ googleFontsLink() + '\n' +
       var en = (sets[0] && sets[0].length) ? sets[0] : JSON.parse(JSON.stringify(slides));
       var fr = fillFromEnglish(sets[1], en, 'fr');
       var us = fillFromEnglish(sets[2], en, 'us');
+      return Promise.all([switchLinks(fr, 'fr').catch(function(){ return {list:fr}; }), switchLinks(us, 'us').catch(function(){ return {list:us}; })]).then(function(done){ return [en, done[0].list, done[1].list]; });
+    }).then(function(sets){
+      var en = sets[0], fr = sets[1], us = sets[2];
       var stripData = function(code){ return code.replace(/<!-- JCS-PROJECT-DATA-BEGIN[\s\S]*?JCS-PROJECT-DATA-END -->\n?/, ''); };
       var baseId = instanceId;
       return '<!-- Built with Justinnovate Code Studio — ONE code for all 3 sites (ca-en, ca-fr, us). Each site shows only its own banner. -->\n' +
