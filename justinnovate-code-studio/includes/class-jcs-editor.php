@@ -80,6 +80,13 @@ class JCS_Editor {
 				JCS_CPT::save_data( $post_id, $data, 'us' );
 			}
 		}
+		// French / USA: fill any field that is still empty from English (never overwrites).
+		if ( 'en' !== $lang ) {
+			$english_data = JCS_CPT::get_data( $post_id, 'en' );
+			if ( ! empty( $english_data ) ) {
+				$data = JCS_CPT::fill_missing_from_english( is_array( $data ) ? $data : array(), $english_data, $lang );
+			}
+		}
 
 		wp_enqueue_style( 'jcs-editor', JCS_PLUGIN_URL . 'editor/css/editor.css', array(), JCS_VERSION );
 		$font_url = JCS_Settings::google_fonts_url();

@@ -138,7 +138,7 @@ class JCS_REST {
 				'id'    => $id,
 				'title' => get_the_title( $id ),
 				'type'  => JCS_CPT::get_element_type( $id ),
-				'data'  => JCS_CPT::get_data( $id, $this->language( $request ) ),
+				'data'  => $this->data_with_english_fallback( $id, $this->language( $request ) ),
 			)
 		);
 	}
@@ -167,7 +167,7 @@ class JCS_REST {
 				// If this locale has never been saved, seed it from the complete
 				// English slider so every banner exists immediately.
 				if ( empty( $localized ) ) {
-					JCS_CPT::save_data( $id, $body['data'], $locale );
+					JCS_CPT::save_data( $id, JCS_CPT::fill_missing_from_english( array(), $body['data'], $locale ), $locale );
 					continue;
 				}
 
@@ -195,6 +195,9 @@ class JCS_REST {
 					$localized[] = $body['data'][ count( $localized ) ];
 				}
 
+				// Fill any field still empty in this locale from English (never overwrites).
+				$localized = JCS_CPT::fill_missing_from_english( $localized, $body['data'], $locale );
+
 				JCS_CPT::save_data( $id, $localized, $locale );
 			}
 		}
@@ -215,6 +218,22 @@ class JCS_REST {
 				'edited' => current_time( 'mysql' ),
 			)
 		);
+	}
+
+	/**
+	 * French / USA data with every empty field filled from English, so the
+	 * editor and the all-sites embed never show blank headings.
+	 */
+	private function data_with_english_fallback( $id, $lang ) {
+		$data = JCS_CPT::get_data( $id, $lang );
+		if ( 'en' === $lang ) {
+			return $data;
+		}
+		$english = JCS_CPT::get_data( $id, 'en' );
+		if ( empty( $english ) ) {
+			return $data;
+		}
+		return JCS_CPT::fill_missing_from_english( is_array( $data ) ? $data : array(), $english, $lang );
 	}
 
 	private function language( WP_REST_Request $request ) {

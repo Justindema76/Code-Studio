@@ -43,6 +43,7 @@
           '<button class="jcs-btn secondary" id="jcsOpenImport">Load code / project</button>' +
           '<button class="jcs-btn secondary" id="jcsCopyProject">Copy project JSON</button>' +
           '<button class="jcs-btn secondary" id="jcsCopyTop">Copy embed code</button>' +
+          '<button class="jcs-btn primary" id="jcsCopyAll" title="One code for ca-en, ca-fr and us">Copy code for all 3 sites</button>' +
           '<button class="jcs-btn primary" id="jcsSave">Save</button>' +
         '</div>' +
       '</header>' +
@@ -1266,6 +1267,79 @@ googleFontsLink() + '\n' +
   el('jcsImportModal').addEventListener('click', function(e){ if(e.target === el('jcsImportModal')) closeImport(); });
   el('jcsCopyProject').onclick = function(){ copyText(JSON.stringify(slides), this); };
   el('jcsCopyTop').onclick = function(){ copyText(el('jcsCodeOutput').value, this); };
+
+  // ---------- ONE embed code for all 3 sites (ca-en, ca-fr, us) ----------
+  // Builds the Canada, French and USA versions of this banner into one code.
+  // On the website each one shows only on its own site; empty French / USA
+  // fields fall back to English (links switched to that site).
+  var SITE_URL_KEYS = ['buttonUrl','desktopBgLink','mobileBgLink'];
+  function siteRestUrl(lang){
+    var u = String(DATA.restUrl || '');
+    if(/[?&]lang=/.test(u)) return u.replace(/([?&])lang=[^&#]*/, '$1lang='+lang);
+    return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'lang=' + lang;
+  }
+  function localizeUrl(v, lang){
+    if(typeof v !== 'string' || !v || lang === 'en') return v;
+    return v.replace(/^(https?:\/\/(?:www\.)?wheelsauto\.com)\/ca-en\//i, '$1' + (lang === 'fr' ? '/ca-fr/' : '/us/'));
+  }
+  function isBlank(v){ return v == null || (typeof v === 'string' && !v.trim()); }
+  function fillFromEnglish(list, english, lang){
+    var out = (Array.isArray(list) ? list : []).map(function(s){ return Object.assign({}, s); });
+    (english || []).forEach(function(en, i){
+      if(!out[i]){
+        var copy = Object.assign({}, en);
+        SITE_URL_KEYS.forEach(function(k){ if(k in copy) copy[k] = localizeUrl(copy[k], lang); });
+        out[i] = copy; return;
+      }
+      Object.keys(en).forEach(function(k){
+        if(isBlank(en[k]) || !isBlank(out[i][k])) return;
+        out[i][k] = SITE_URL_KEYS.indexOf(k) >= 0 ? localizeUrl(en[k], lang) : en[k];
+      });
+    });
+    return out;
+  }
+  function fetchSite(lang){
+    if(lang === (DATA.language || 'en')) return Promise.resolve(JSON.parse(JSON.stringify(slides)));
+    return fetch(siteRestUrl(lang), {credentials:'same-origin', headers:{'X-WP-Nonce': DATA.nonce}})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(res){ return Array.isArray(res.data) ? res.data : []; });
+  }
+  function codeFor(list, id){
+    var keepSlides = slides, keepId = instanceId, keepRoot = bannerRoot;
+    slides = list.map(function(x){ return Object.assign(defaults(), x); });
+    instanceId = id; bannerRoot = null;
+    try { return generateCode(); } finally { slides = keepSlides; instanceId = keepId; bannerRoot = keepRoot; }
+  }
+  function generateAllSitesCode(){
+    return Promise.all([fetchSite('en'), fetchSite('fr'), fetchSite('us')]).then(function(sets){
+      var en = (sets[0] && sets[0].length) ? sets[0] : JSON.parse(JSON.stringify(slides));
+      var fr = fillFromEnglish(sets[1], en, 'fr');
+      var us = fillFromEnglish(sets[2], en, 'us');
+      var stripData = function(code){ return code.replace(/<!-- JCS-PROJECT-DATA-BEGIN[\s\S]*?JCS-PROJECT-DATA-END -->\n?/, ''); };
+      var baseId = instanceId;
+      return '<!-- Built with Justinnovate Code Studio — ONE code for all 3 sites (ca-en, ca-fr, us). Each site shows only its own banner. -->\n' +
+        '<style>.jcs-site{display:none}html.wstore-ca-en .jcs-site-ca-en,html.wstore-ca-fr .jcs-site-ca-fr,html.wstore-us .jcs-site-us{display:block}</style>\n' +
+        '<script>(function(){var h=document.documentElement;if(/(^|\\s)wstore-/.test(h.className))return;var m=location.pathname.match(/^\\/(ca-en|ca-fr|us)(\\/|$)/);var st=m?m[1]:((h.lang||"").indexOf("fr")===0?"ca-fr":"ca-en");h.classList.add("wstore-"+st);})();<\/script>\n\n' +
+        '<!-- CANADA ENGLISH (ca-en) -->\n<div class="jcs-site jcs-site-ca-en">\n' + codeFor(en, baseId + '-ca') + '\n</div>\n\n' +
+        '<!-- CANADA FRENCH (ca-fr) -->\n<div class="jcs-site jcs-site-ca-fr">\n' + stripData(codeFor(fr, baseId + '-fr')) + '\n</div>\n\n' +
+        '<!-- USA (us) -->\n<div class="jcs-site jcs-site-us">\n' + stripData(codeFor(us, baseId + '-us')) + '\n</div>\n';
+    });
+  }
+  el('jcsCopyAll').onclick = function(){
+    var btn = this, old = btn.textContent;
+    btn.textContent = 'Building…'; btn.disabled = true;
+    generateAllSitesCode().then(function(code){
+      return navigator.clipboard.writeText(code).then(function(){ btn.textContent = 'Copied all 3!'; }, function(){
+        el('jcsCodeOutput').value = code;
+        window.alert('Your browser blocked the copy. The all-sites code is now in the Embed code box below — click Copy code.');
+      });
+    }).catch(function(err){
+      window.alert('Could not build the all-sites code: ' + err.message);
+    }).then(function(){
+      btn.disabled = false;
+      setTimeout(function(){ btn.textContent = old; }, 1600);
+    });
+  };
 
   function textOf(node){ return node ? node.textContent.trim() : ''; }
   function importLegacyCode(raw){

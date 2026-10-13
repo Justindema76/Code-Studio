@@ -1,3 +1,7 @@
+## 0.3.41
+- French and USA no longer come over with empty fields. Any field that is empty in French or USA is filled from English (when you save English and when you open French or USA). French or USA text you have already written is never overwritten, and wheelsauto.com links switch from /ca-en/ to /ca-fr/ or /us/.
+- New "Copy code for all 3 sites" button: one embed code with the Canada, French and USA versions. Paste it once in a Page Builder HTML Code element; each site shows only its own banner.
+
 ## 0.3.40
 - Embed code now starts every copy of a banner on the page, so a hidden or duplicate copy can no longer stop the visible one from sliding.
 - New Banner settings: corner radius (desktop and mobile), the width where the mobile layout starts (default 900px), and an option to turn off removing Magento's page padding.
