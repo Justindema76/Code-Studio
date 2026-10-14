@@ -80,14 +80,6 @@ class JCS_Editor {
 				JCS_CPT::save_data( $post_id, $data, 'us' );
 			}
 		}
-		// French / USA: English is the default. Show the English banner with this
-		// language's own words and links (and images only if changed here).
-		if ( 'en' !== $lang ) {
-			$english_data = JCS_CPT::get_data( $post_id, 'en' );
-			if ( ! empty( $english_data ) ) {
-				$data = JCS_CPT::merge_with_english( is_array( $data ) ? $data : array(), $english_data );
-			}
-		}
 
 		wp_enqueue_style( 'jcs-editor', JCS_PLUGIN_URL . 'editor/css/editor.css', array(), JCS_VERSION );
 		$font_url = JCS_Settings::google_fonts_url();

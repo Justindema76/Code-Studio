@@ -43,7 +43,6 @@
           '<button class="jcs-btn secondary" id="jcsOpenImport">Load code / project</button>' +
           '<button class="jcs-btn secondary" id="jcsCopyProject">Copy project JSON</button>' +
           '<button class="jcs-btn secondary" id="jcsCopyTop">Copy embed code</button>' +
-          '<button class="jcs-btn primary" id="jcsCopyAll" title="One code for ca-en, ca-fr and us">Copy code for all 3 sites</button>' +
           '<button class="jcs-btn primary" id="jcsSave">Save</button>' +
         '</div>' +
       '</header>' +
@@ -55,10 +54,9 @@
               '<div class="jcs-segmented"><button id="jcsDesktopMode" class="active">Desktop</button><button id="jcsMobileMode">Mobile</button></div>' +
             '</div>' +
             '<div class="jcs-width-row" id="jcsWidthRow">' +
-              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">893px</span>' +
-              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="1" value="893">' +
-              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap" title="Homepage hero slider: 893 x 490 on wheelsauto.com">Hero (893)</button>' +
-              '<button type="button" class="jcs-btn secondary panel" id="jcsFullWidth" style="margin-left:6px;white-space:nowrap" title="Full-width homepage row: 1290 px wide on wheelsauto.com">Full-width row (1290)</button>' +
+              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">920px</span>' +
+              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="920">' +
+              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap">Hero 70% (920)</button>' +
             '</div>' +
             '<div class="jcs-stage" id="jcsStage">' +
               '<div class="jcs-canvas-scale-wrap" id="jcsScaleWrap">' +
@@ -309,7 +307,7 @@
           '<div class="jcs-preview-head">' +
             '<div><h2 id="jcsPreviewTitle">Actual output preview</h2><p>This renders the exact exported HTML/CSS at the selected viewport width.</p></div>' +
             '<div class="jcs-preview-actions">' +
-              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="893">Hero 893</button><button data-preview-width="1290">Full-width 1290</button><button data-preview-width="1440">Desktop 1440</button></div>' +
+              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="920">Hero 70% 920</button><button data-preview-width="1440">Desktop 1440</button></div>' +
               '<button class="jcs-btn secondary" id="jcsPreviewRefresh" type="button">Refresh</button>' +
               '<button class="jcs-modal-close" id="jcsClosePreview" type="button" aria-label="Close">&times;</button>' +
             '</div>' +
@@ -933,18 +931,7 @@
   el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
-  // Real sizes on wheelsauto.com, and the canvas remembers the width you pick for each banner.
-  var PREVIEW_KEY = 'jcsPreviewWidth:' + (DATA.postId || 'new');
-  function setCanvasWidth(w){
-    w = Math.max(600, Math.min(3000, Math.round(Number(w) || 893)));
-    el('jcsPreviewWidth').value = w; el('jcsPreviewWidthVal').textContent = w + 'px';
-    try { localStorage.setItem(PREVIEW_KEY, String(w)); } catch(e) {}
-    renderCanvas();
-  }
-  el('jcsHeroWidth').onclick = function(){ setCanvasWidth(893); };
-  el('jcsFullWidth').onclick = function(){ setCanvasWidth(1290); };
-  el('jcsPreviewWidth').addEventListener('change', function(){ try { localStorage.setItem(PREVIEW_KEY, String(this.value)); } catch(e) {} });
-  (function(){ var saved = null; try { saved = localStorage.getItem(PREVIEW_KEY); } catch(e) {} if(saved){ el('jcsPreviewWidth').value = saved; el('jcsPreviewWidthVal').textContent = saved + 'px'; } })();
+  el('jcsHeroWidth').onclick = function(){ el('jcsPreviewWidth').value = 920; el('jcsPreviewWidthVal').textContent = '920px'; renderCanvas(); };
 
   document.querySelectorAll('.jcs-tab').forEach(function(t){
     t.addEventListener('click', function(){
@@ -962,7 +949,7 @@
       var b=document.createElement('button'); b.textContent='Banner '+(i+1); b.onclick=function(){ active=i; loadFields(); renderAll(); }; tab.appendChild(b);
       if(slides.length>1){
         var del=document.createElement('button'); del.className='jcs-slide-tab-delete'; del.title='Delete this banner'; del.textContent='\u00D7';
-        if(DATA.language!=='en'){ del.style.display='none'; } del.onclick=function(e){ e.stopPropagation(); if(!window.confirm('Delete Banner '+(i+1)+'?')) return; if(DATA.language==='en') localeOps.push({type:'delete', index:i}); slides.splice(i,1); active = Math.max(0, active >= i ? active-1 : active); loadFields(); renderAll(); markDirty(); };
+        del.onclick=function(e){ e.stopPropagation(); if(!window.confirm('Delete Banner '+(i+1)+'?')) return; slides.splice(i,1); active = Math.max(0, active >= i ? active-1 : active); loadFields(); renderAll(); markDirty(); };
         tab.appendChild(del);
       }
       wrap.appendChild(tab);
@@ -982,7 +969,6 @@
   el('jcsRemove').onclick=function(){
     if(slides.length===1){ window.alert('A project must contain at least one banner. Use New blank to reset it.'); return; }
     if(!window.confirm('Remove Banner '+(active+1)+'?')) return;
-    if(DATA.language==='en') localeOps.push({type:'delete', index:active});
     slides.splice(active,1); active=Math.max(0,active-1); loadFields(); renderAll(); markDirty();
   };
 
@@ -1244,7 +1230,7 @@ googleFontsLink() + '\n' +
       try{ livePreviewWindow.focus(); }catch(e){}
     }else{
       // Popup blocked: fall back to the embedded exact-size preview.
-      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:Number(el('jcsPreviewWidth').value)||893); updateActualPreview();
+      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:920); updateActualPreview();
     }
   };
   el('jcsClosePreview').onclick=function(){ el('jcsPreviewModal').hidden=true; };
@@ -1280,152 +1266,6 @@ googleFontsLink() + '\n' +
   el('jcsImportModal').addEventListener('click', function(e){ if(e.target === el('jcsImportModal')) closeImport(); });
   el('jcsCopyProject').onclick = function(){ copyText(JSON.stringify(slides), this); };
   el('jcsCopyTop').onclick = function(){ copyText(el('jcsCodeOutput').value, this); };
-
-  // ---------- ONE embed code for all 3 sites (ca-en, ca-fr, us) ----------
-  // Builds the Canada, French and USA versions of this banner into one code.
-  // On the website each one shows only on its own site; empty French / USA
-  // fields fall back to English (links switched to that site).
-  var SITE_URL_KEYS = ['buttonUrl','desktopBgLink','mobileBgLink'];
-  function siteRestUrl(lang){
-    var u = String(DATA.restUrl || '');
-    if(/[?&]lang=/.test(u)) return u.replace(/([?&])lang=[^&#]*/, '$1lang='+lang);
-    return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'lang=' + lang;
-  }
-  function localizeUrl(v, lang){
-    if(typeof v !== 'string' || !v || lang === 'en') return v;
-    return v.replace(/^(https?:\/\/(?:www\.)?wheelsauto\.com)\/ca-en\//i, '$1' + (lang === 'fr' ? '/ca-fr/' : '/us/'));
-  }
-  function isBlank(v){ return v == null || (typeof v === 'string' && !v.trim()); }
-  function fillFromEnglish(list, english, lang){
-    var out = (Array.isArray(list) ? list : []).map(function(s){ return Object.assign({}, s); });
-    (english || []).forEach(function(en, i){
-      if(!out[i]){ out[i] = Object.assign({}, en); return; }
-      Object.keys(en).forEach(function(k){
-        if(isBlank(en[k]) || !isBlank(out[i][k])) return;
-        out[i][k] = en[k];
-      });
-    });
-    return out;
-  }
-  // Switch wheelsauto.com /ca-en/ links to /ca-fr/ or /us/ — but only links whose
-  // page really exists on that site (checked by WordPress). Others are left as-is.
-  function checkLinksUrl(){ return String(DATA.restUrl || '').replace(/\/element\/(\d+)/, '/check-links/$1'); }
-  function switchLinks(list, lang){
-    var plan = [];
-    (list || []).forEach(function(s, i){
-      SITE_URL_KEYS.forEach(function(k){
-        var from = s && s[k], to = localizeUrl(from, lang);
-        if(typeof from === 'string' && to !== from) plan.push({i:i, k:k, from:from, to:to});
-      });
-    });
-    if(!plan.length || lang === 'en') return Promise.resolve({list:list, switched:[], broken:[]});
-    var urls = plan.map(function(x){ return x.to; }).filter(function(u, n, a){ return a.indexOf(u) === n; });
-    return fetch(checkLinksUrl(), {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-WP-Nonce': DATA.nonce}, body: JSON.stringify({urls: urls})})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(res){
-        var ok = (res && res.results) || {}, switched = [], broken = [];
-        plan.forEach(function(x){
-          if(ok[x.to]){ list[x.i][x.k] = x.to; switched.push(x); }
-          else broken.push(x);
-        });
-        return {list:list, switched:switched, broken:broken};
-      });
-  }
-  // FR / USA: tell you which links still go to the Canada English site. Nothing is
-  // changed automatically: you click "Use this link" yourself.
-  function checkOnlyLinks(list, lang){
-    var plan = [];
-    (list || []).forEach(function(s, i){
-      SITE_URL_KEYS.forEach(function(k){
-        var from = s && s[k], to = localizeUrl(from, lang);
-        if(typeof from === 'string' && to !== from) plan.push({i:i, k:k, from:from, to:to});
-      });
-    });
-    if(!plan.length) return Promise.resolve([]);
-    var urls = plan.map(function(x){ return x.to; }).filter(function(u, n, a){ return a.indexOf(u) === n; });
-    return fetch(checkLinksUrl(), {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-WP-Nonce': DATA.nonce}, body: JSON.stringify({urls: urls})})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(res){ var ok = (res && res.results) || {}; plan.forEach(function(x){ x.exists = !!ok[x.to]; }); return plan; });
-  }
-  function showLinkReport(lang, plan){
-    var old = document.getElementById('jcsLinkNotice'); if(old) old.remove();
-    if(!plan.length) return;
-    var siteName = lang === 'fr' ? 'French (ca-fr)' : 'USA (us)';
-    var labels = {buttonUrl:'Button URL', desktopBgLink:'Desktop banner link', mobileBgLink:'Mobile banner link'};
-    var box = document.createElement('div');
-    box.id = 'jcsLinkNotice';
-    box.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;max-width:480px;max-height:60vh;overflow:auto;background:#fff;color:#111;border:1px solid #ccc;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px 16px;font:13px/1.45 system-ui,sans-serif';
-    var html = '<button type="button" data-close="1" style="float:right;border:0;background:none;font-size:18px;cursor:pointer">&times;</button>' +
-      '<b>' + plan.length + ' link(s) still go to the Canada English site.</b> Nothing has been changed.<ul style="margin:8px 0 0 18px;padding:0">';
-    plan.forEach(function(x, n){
-      html += '<li style="margin-bottom:8px">Banner ' + (x.i + 1) + ' · ' + (labels[x.k] || x.k) + '<br><span style="color:#666;word-break:break-all">' + esc(x.from) + '</span><br>' +
-        (x.exists
-          ? 'The ' + siteName + ' page exists: <span style="word-break:break-all">' + esc(x.to) + '</span> <button type="button" data-use="' + n + '" style="margin-top:4px;padding:4px 10px;border:1px solid #1d4ed8;border-radius:6px;background:#1d4ed8;color:#fff;font:600 12px system-ui;cursor:pointer">Use this link</button>'
-          : '<span style="color:#b30f16;font-weight:600">No ' + siteName + ' page: change it by hand.</span>') + '</li>';
-    });
-    box.innerHTML = html + '</ul>';
-    document.body.appendChild(box);
-    box.addEventListener('click', function(e){
-      var t = e.target;
-      if(t.getAttribute('data-close')){ box.remove(); return; }
-      var n = t.getAttribute('data-use');
-      if(n !== null){
-        var x = plan[+n];
-        slides[x.i][x.k] = x.to;
-        t.outerHTML = '<span style="color:#15803d;font-weight:600">Switched. Click Save to keep it.</span>';
-        loadFields(); renderAll(); markDirty();
-      }
-    });
-  }
-  if(DATA.language === 'fr' || DATA.language === 'us'){
-    checkOnlyLinks(slides, DATA.language).then(function(plan){ showLinkReport(DATA.language, plan); }).catch(function(){});
-  }
-
-  function fetchSite(lang){
-    if(lang === (DATA.language || 'en')) return Promise.resolve(JSON.parse(JSON.stringify(slides)));
-    return fetch(siteRestUrl(lang), {credentials:'same-origin', headers:{'X-WP-Nonce': DATA.nonce}})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(res){ return Array.isArray(res.data) ? res.data : []; });
-  }
-  function codeFor(list, id){
-    var keepSlides = slides, keepId = instanceId, keepRoot = bannerRoot;
-    slides = list.map(function(x){ return Object.assign(defaults(), x); });
-    instanceId = id; bannerRoot = null;
-    try { return generateCode(); } finally { slides = keepSlides; instanceId = keepId; bannerRoot = keepRoot; }
-  }
-  function generateAllSitesCode(){
-    return Promise.all([fetchSite('en'), fetchSite('fr'), fetchSite('us')]).then(function(sets){
-      var en = (sets[0] && sets[0].length) ? sets[0] : JSON.parse(JSON.stringify(slides));
-      var fr = fillFromEnglish(sets[1], en, 'fr');
-      var us = fillFromEnglish(sets[2], en, 'us');
-      return Promise.all([switchLinks(fr, 'fr').catch(function(){ return {list:fr}; }), switchLinks(us, 'us').catch(function(){ return {list:us}; })]).then(function(done){ return [en, done[0].list, done[1].list]; });
-    }).then(function(sets){
-      var en = sets[0], fr = sets[1], us = sets[2];
-      var stripData = function(code){ return code.replace(/<!-- JCS-PROJECT-DATA-BEGIN[\s\S]*?JCS-PROJECT-DATA-END -->\n?/, ''); };
-      var baseId = instanceId;
-      return '<!-- Built with Justinnovate Code Studio — ONE code for all 3 sites (ca-en, ca-fr, us). Each site shows only its own banner. -->\n' +
-        '<style>.jcs-site{display:none}html.wstore-ca-en .jcs-site-ca-en,html.wstore-ca-fr .jcs-site-ca-fr,html.wstore-us .jcs-site-us{display:block}</style>\n' +
-        '<script>(function(){var h=document.documentElement;if(/(^|\\s)wstore-/.test(h.className))return;var m=location.pathname.match(/^\\/(ca-en|ca-fr|us)(\\/|$)/);var st=m?m[1]:((h.lang||"").indexOf("fr")===0?"ca-fr":"ca-en");h.classList.add("wstore-"+st);})();<\/script>\n\n' +
-        '<!-- CANADA ENGLISH (ca-en) -->\n<div class="jcs-site jcs-site-ca-en">\n' + codeFor(en, baseId + '-ca') + '\n</div>\n\n' +
-        '<!-- CANADA FRENCH (ca-fr) -->\n<div class="jcs-site jcs-site-ca-fr">\n' + stripData(codeFor(fr, baseId + '-fr')) + '\n</div>\n\n' +
-        '<!-- USA (us) -->\n<div class="jcs-site jcs-site-us">\n' + stripData(codeFor(us, baseId + '-us')) + '\n</div>\n';
-    });
-  }
-  el('jcsCopyAll').onclick = function(){
-    var btn = this, old = btn.textContent;
-    btn.textContent = 'Building…'; btn.disabled = true;
-    generateAllSitesCode().then(function(code){
-      return navigator.clipboard.writeText(code).then(function(){ btn.textContent = 'Copied all 3!'; }, function(){
-        el('jcsCodeOutput').value = code;
-        window.alert('Your browser blocked the copy. The all-sites code is now in the Embed code box below — click Copy code.');
-      });
-    }).catch(function(err){
-      window.alert('Could not build the all-sites code: ' + err.message);
-    }).then(function(){
-      btn.disabled = false;
-      setTimeout(function(){ btn.textContent = old; }, 1600);
-    });
-  };
 
   function textOf(node){ return node ? node.textContent.trim() : ''; }
   function importLegacyCode(raw){
@@ -1509,10 +1349,9 @@ googleFontsLink() + '\n' +
   el('jcsTitle').value = DATA.title || '';
   el('jcsTitle').addEventListener('input', markDirty);
 
-  function doSave(after){
+  function doSave(){
     var status = el('jcsStatus'); var btn = el('jcsSave');
     btn.disabled = true; status.textContent = 'Saving…';
-    if(DATA.language === 'fr' || DATA.language === 'us') markOwnEdits();
     fetch(DATA.restUrl, {
       method: 'POST',
       credentials: 'same-origin',
@@ -1529,9 +1368,7 @@ googleFontsLink() + '\n' +
           return parsed;
         });
       })
-      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false;
-        if(DATA.language === 'fr' || DATA.language === 'us') localeBaseline = JSON.parse(JSON.stringify(slides));
-        if(typeof after === 'function') after(); })
+      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false; })
       .catch(function(err){ status.textContent = 'Save failed: ' + err.message + ' (see console)'; btn.disabled = false; });
   }
   el('jcsSave').onclick = doSave;
@@ -1542,67 +1379,8 @@ googleFontsLink() + '\n' +
     if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); doSave(); }
   });
 
-  // ---------- FR / USA: English is the default ----------
-  // Everything follows English. Anything you change here is remembered and kept
-  // for this site only; settings you don't touch keep following English.
-  var LOCALE_KEYS = ['eyebrow','heading','subheading','buttonText','altText','buttonUrl','desktopBgLink','mobileBgLink'];
-  var localeBaseline = null;
-  function markOwnEdits(){
-    if(!localeBaseline) return;
-    slides.forEach(function(s, i){
-      var base = localeBaseline[i]; if(!base) return;
-      Object.keys(s).forEach(function(k){
-        if(k === '_own' || k === 'ownImages' || LOCALE_KEYS.indexOf(k) >= 0) return;
-        if(JSON.stringify(s[k]) !== JSON.stringify(base[k])){ s._own = s._own || {}; s._own[k] = true; }
-      });
-    });
-  }
-  if(DATA.language === 'fr' || DATA.language === 'us'){
-    var siteLabel = DATA.language === 'fr' ? 'French' : 'USA';
-    localeBaseline = JSON.parse(JSON.stringify(slides));
-    ['jcsAdd','jcsDuplicate'].forEach(function(id){ var b = el(id); if(b){ b.disabled = true; b.title = 'Add banners in the EN tab: '+siteLabel+' uses the same banners as English'; b.style.opacity = '.45'; } });
-    var resetBtn = document.createElement('button');
-    resetBtn.type = 'button'; resetBtn.className = 'jcs-btn secondary panel';
-    resetBtn.style.cssText = 'width:100%;margin:6px 0 10px';
-    resetBtn.textContent = 'Use English design for this banner';
-    resetBtn.title = 'Undo the '+siteLabel+'-only design changes on this banner (your words and links stay)';
-    resetBtn.onclick = function(){
-      if(!window.confirm('Make Banner '+(active+1)+' look exactly like English again? Your '+siteLabel+' words and links stay.')) return;
-      delete cur()._own; delete cur().ownImages;
-      localeBaseline = null;   /* save without marking anything as changed */
-      doSave(function(){ location.reload(); });
-    };
-    var slideTabs = el('jcsSlideTabs'); if(slideTabs && slideTabs.parentNode) slideTabs.parentNode.insertBefore(resetBtn, slideTabs.nextSibling);
-  }
-
-  // ---------- keep the same banner, side tab and Desktop/Mobile when switching EN · FR · USA ----------
-  var viewParams = new URLSearchParams(location.search);
-  var startSlide = parseInt(viewParams.get('jcs_slide'), 10);
-  if(!isNaN(startSlide) && startSlide >= 0 && startSlide < slides.length) active = startSlide;
-  [DATA.englishUrl, DATA.frenchUrl, DATA.usaUrl].forEach(function(url){
-    if(!url) return;
-    [].slice.call(document.querySelectorAll('.jcs-topbar-actions a[href]')).forEach(function(a){
-      if(a.getAttribute('href') !== url) return;
-      a.addEventListener('click', function(e){
-        e.preventDefault();
-        var target = new URL(url, location.href);
-        var tab = document.querySelector('.jcs-tab.active');
-        target.searchParams.set('jcs_slide', String(active));
-        if(tab && tab.dataset.tab) target.searchParams.set('jcs_tab', tab.dataset.tab);
-        target.searchParams.set('jcs_mode', mode);
-        location.href = target.toString();
-      });
-    });
-  });
-
   // ---------- init ----------
   el('jcsStatus').textContent = dirty ? 'Unsaved changes' : 'All changes saved';
   loadFields();
   renderAll();
-  (function(){
-    var tab = viewParams.get('jcs_tab');
-    var tabBtn = tab ? document.querySelector('.jcs-tab[data-tab="' + tab.replace(/[^a-z]/g, '') + '"]') : null;
-    if(tabBtn) tabBtn.click();
-    if(viewParams.get('jcs_mode') === 'mobile' && el('jcsMobileMode')) el('jcsMobileMode').click();
-  })();
 })();

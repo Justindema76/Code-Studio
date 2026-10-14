@@ -104,16 +104,6 @@ class JCS_REST {
 
 		register_rest_route(
 			self::NAMESPACE_,
-			'/check-links/(?P<id>\d+)',
-			array(
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'check_links' ),
-				'permission_callback' => array( $this, 'can_edit' ),
-			)
-		);
-
-		register_rest_route(
-			self::NAMESPACE_,
 			'/elements',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -148,7 +138,7 @@ class JCS_REST {
 				'id'    => $id,
 				'title' => get_the_title( $id ),
 				'type'  => JCS_CPT::get_element_type( $id ),
-				'data'  => $this->data_with_english_fallback( $id, $this->language( $request ) ),
+				'data'  => JCS_CPT::get_data( $id, $this->language( $request ) ),
 			)
 		);
 	}
@@ -177,34 +167,33 @@ class JCS_REST {
 				// If this locale has never been saved, seed it from the complete
 				// English slider so every banner exists immediately.
 				if ( empty( $localized ) ) {
-					JCS_CPT::save_data( $id, JCS_CPT::merge_with_english( array(), $body['data'] ), $locale );
+					JCS_CPT::save_data( $id, $body['data'], $locale );
 					continue;
 				}
 
-				// Keep each language's words lined up with the right banner when
-				// banners are duplicated or removed in English.
 				foreach ( $locale_ops as $op ) {
-					$type = is_array( $op ) ? ( $op['type'] ?? '' ) : '';
-					if ( 'duplicate' === $type ) {
-						$source_index = isset( $op['sourceIndex'] ) ? (int) $op['sourceIndex'] : -1;
-						$target_index = isset( $op['targetIndex'] ) ? (int) $op['targetIndex'] : -1;
-						if ( $source_index < 0 || $target_index < 0 || ! isset( $localized[ $source_index ] ) ) {
-							continue;
-						}
-						$copy         = $localized[ $source_index ];
-						$target_index = min( $target_index, count( $localized ) );
-						array_splice( $localized, $target_index, 0, array( $copy ) );
-					} elseif ( 'delete' === $type ) {
-						$index = isset( $op['index'] ) ? (int) $op['index'] : -1;
-						if ( $index >= 0 && $index < count( $localized ) ) {
-							array_splice( $localized, $index, 1 );
-						}
+					if ( ! is_array( $op ) || 'duplicate' !== ( $op['type'] ?? '' ) ) {
+						continue;
 					}
+
+					$source_index = isset( $op['sourceIndex'] ) ? (int) $op['sourceIndex'] : -1;
+					$target_index = isset( $op['targetIndex'] ) ? (int) $op['targetIndex'] : -1;
+
+					if ( $source_index < 0 || $target_index < 0 || ! isset( $localized[ $source_index ] ) ) {
+						continue;
+					}
+
+					$copy = $localized[ $source_index ];
+					$target_index = min( $target_index, count( $localized ) );
+					array_splice( $localized, $target_index, 0, array( $copy ) );
 				}
 
-				// English is the default: design, images and banner list come from English,
-				// this language keeps its own words and links.
-				$localized = JCS_CPT::merge_with_english( $localized, $body['data'] );
+				// Repair older projects created before locale slide syncing existed.
+				// This safely covers the common case where newer English banners were
+				// appended but FR/USA still have fewer slides.
+				while ( count( $localized ) < count( $body['data'] ) ) {
+					$localized[] = $body['data'][ count( $localized ) ];
+				}
 
 				JCS_CPT::save_data( $id, $localized, $locale );
 			}
@@ -226,21 +215,6 @@ class JCS_REST {
 				'edited' => current_time( 'mysql' ),
 			)
 		);
-	}
-
-	/**
-	 * French / USA data = the English banner with that language's words and links.
-	 */
-	private function data_with_english_fallback( $id, $lang ) {
-		$data = JCS_CPT::get_data( $id, $lang );
-		if ( 'en' === $lang ) {
-			return $data;
-		}
-		$english = JCS_CPT::get_data( $id, 'en' );
-		if ( empty( $english ) ) {
-			return $data;
-		}
-		return JCS_CPT::merge_with_english( is_array( $data ) ? $data : array(), $english );
 	}
 
 	private function language( WP_REST_Request $request ) {
@@ -487,40 +461,6 @@ class JCS_REST {
 				'failures'   => $failures,
 			)
 		);
-	}
-
-	/**
-	 * Checks which wheelsauto.com links really exist (follows redirects).
-	 * Used when switching /ca-en/ links to /ca-fr/ or /us/: only links that
-	 * open a real page are switched. Other hosts are never requested.
-	 */
-	public function check_links( WP_REST_Request $request ) {
-		$body = $request->get_json_params();
-		$urls = ( isset( $body['urls'] ) && is_array( $body['urls'] ) ) ? $body['urls'] : array();
-		$urls = array_slice( array_values( array_unique( array_map( 'strval', $urls ) ) ), 0, 40 );
-		$args = array(
-			'timeout'     => 8,
-			'redirection' => 3,
-			'user-agent'  => 'Mozilla/5.0 (Justinnovate Code Studio link check)',
-		);
-		$results = array();
-
-		foreach ( $urls as $url ) {
-			$host = wp_parse_url( $url, PHP_URL_HOST );
-			if ( ! $host || ! preg_match( '/(^|\.)wheelsauto\.com$/i', $host ) ) {
-				$results[ $url ] = false;
-				continue;
-			}
-			$response = wp_safe_remote_head( $url, $args );
-			$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
-			if ( 0 === $code || 405 === $code ) {
-				$response = wp_safe_remote_get( $url, $args + array( 'limit_response_size' => 65536 ) );
-				$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
-			}
-			$results[ $url ] = ( $code >= 200 && $code < 300 );
-		}
-
-		return rest_ensure_response( array( 'results' => $results ) );
 	}
 
 	public function list_elements( WP_REST_Request $request ) {

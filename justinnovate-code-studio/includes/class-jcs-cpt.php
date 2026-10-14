@@ -164,59 +164,6 @@ class JCS_CPT {
 		return update_post_meta( $post_id, $key, wp_slash( $json ) );
 	}
 
-	/** Fields that belong to each language. Everything else always comes from English. */
-	const LOCALE_KEYS = array( 'eyebrow', 'heading', 'subheading', 'buttonText', 'altText', 'buttonUrl', 'desktopBgLink', 'mobileBgLink' );
-
-	/**
-	 * English is the default: French / USA = the English banner (design, layout,
-	 * sizes, colours, images, settings) with that language's own words and links
-	 * on top (empty ones fall back to English). Any other setting changed in
-	 * French / USA is remembered in "_own" and kept for that language only;
-	 * everything not changed there keeps following English. The banner list
-	 * always follows English.
-	 */
-	public static function merge_with_english( array $localized, array $english ) {
-		$localized = array_values( $localized );
-		$out       = array();
-		foreach ( array_values( $english ) as $index => $en_slide ) {
-			if ( ! is_array( $en_slide ) ) {
-				continue;
-			}
-			$slide = $en_slide;
-			unset( $slide['_own'], $slide['ownImages'] );
-			$loc = ( isset( $localized[ $index ] ) && is_array( $localized[ $index ] ) ) ? $localized[ $index ] : null;
-			if ( $loc ) {
-				foreach ( self::LOCALE_KEYS as $key ) {
-					if ( isset( $loc[ $key ] ) && is_string( $loc[ $key ] ) && '' !== trim( $loc[ $key ] ) ) {
-						$slide[ $key ] = $loc[ $key ];
-					}
-				}
-				$own = ( isset( $loc['_own'] ) && is_array( $loc['_own'] ) ) ? $loc['_own'] : array();
-				if ( ! empty( $loc['ownImages'] ) ) {
-					$own['desktopImage'] = true;
-					$own['mobileImage']  = true;
-				}
-				$kept = array();
-				foreach ( $own as $key => $flag ) {
-					if ( ! $flag || in_array( $key, self::LOCALE_KEYS, true ) || ! array_key_exists( $key, $loc ) ) {
-						continue;
-					}
-					// An emptied image means "use the English image again".
-					if ( in_array( $key, array( 'desktopImage', 'mobileImage' ), true ) && ( ! is_string( $loc[ $key ] ) || '' === trim( $loc[ $key ] ) ) ) {
-						continue;
-					}
-					$slide[ $key ] = $loc[ $key ];
-					$kept[ $key ]  = true;
-				}
-				if ( $kept ) {
-					$slide['_own'] = $kept;
-				}
-			}
-			$out[] = $slide;
-		}
-		return $out;
-	}
-
 	public static function get_element_type( $post_id ) {
 		$type = get_post_meta( $post_id, '_jcs_element_type', true );
 		return $type ? $type : 'banner';

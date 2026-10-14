@@ -1,28 +1,5 @@
-## 0.3.46
-- Canvas shows the real sizes from wheelsauto.com: "Hero (893)" for the homepage slider and "Full-width row (1290)" for full-width rows. The canvas remembers the width you pick for each banner.
-
-## 0.3.45
-- The link pop-up is back in French / USA, but it never changes links on its own: it lists links that still go to /ca-en/, shows the French / USA page when one exists with a "Use this link" button, and says "change it by hand" when there is none.
-
-## 0.3.44
-- Nothing is locked in French or USA any more. Everything follows English by default (gradient, images, position, sizes, colours, settings), and every English change carries over.
-- Anything you change in French or USA is remembered and kept for that site only; settings you didn't touch there keep following English.
-- New "Use English design for this banner" button in French / USA undoes that site's own design changes on the banner (words and links stay).
-- Adding / removing banners stays in English so all three sites keep the same banners.
-
-## 0.3.43
-- English is the default. French and USA always use the English banner: design, layout, sizes, colours, settings, images and the list of banners. Only the words and links (Content tab) are their own. Empty words or links show the English ones.
-- Images can still be changed in French or USA for that site only; clear the image box to use the English image again.
-- In French / USA the other tabs are marked "Shared with English" and locked, and banners are added or removed in English only. Removing or duplicating a banner in English keeps each language's words on the right banner.
-- Opening French or USA no longer changes any links and no longer shows the link pop-up. "Copy code for all 3 sites" only switches links that still point to /ca-en/ (and only if the page exists on that site).
-
-## 0.3.42
-- Switching EN / FR / USA keeps the banner you are on, the same side tab and Desktop/Mobile (no more jumping back to Banner 1).
-
-## 0.3.41
-- French and USA no longer come over with empty fields. Any field that is empty in French or USA is filled from English (when you save English and when you open French or USA). French or USA text you have already written is never overwritten.
-- Opening the French or USA version switches wheelsauto.com /ca-en/ links to /ca-fr/ or /us/, but only when that page really exists on that site (WordPress checks it). Links with no page there stay as they are and are listed so you can fix them by hand. Click Save to keep the switched links.
-- New "Copy code for all 3 sites" button: one embed code with the Canada, French and USA versions. Paste it once in a Page Builder HTML Code element; each site shows only its own banner.
+## 0.3.47
+- Rolled back to how Code Studio worked in 0.3.40 (before "Copy code for all 3 sites", the link check, and French/USA following English). Same code as 0.3.40; new version number only so browsers load it fresh.
 
 ## 0.3.40
 - Embed code now starts every copy of a banner on the page, so a hidden or duplicate copy can no longer stop the visible one from sliding.
