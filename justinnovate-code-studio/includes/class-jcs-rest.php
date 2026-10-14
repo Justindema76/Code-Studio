@@ -177,36 +177,34 @@ class JCS_REST {
 				// If this locale has never been saved, seed it from the complete
 				// English slider so every banner exists immediately.
 				if ( empty( $localized ) ) {
-					JCS_CPT::save_data( $id, JCS_CPT::fill_missing_from_english( array(), $body['data'], $locale ), $locale );
+					JCS_CPT::save_data( $id, JCS_CPT::merge_with_english( array(), $body['data'] ), $locale );
 					continue;
 				}
 
+				// Keep each language's words lined up with the right banner when
+				// banners are duplicated or removed in English.
 				foreach ( $locale_ops as $op ) {
-					if ( ! is_array( $op ) || 'duplicate' !== ( $op['type'] ?? '' ) ) {
-						continue;
+					$type = is_array( $op ) ? ( $op['type'] ?? '' ) : '';
+					if ( 'duplicate' === $type ) {
+						$source_index = isset( $op['sourceIndex'] ) ? (int) $op['sourceIndex'] : -1;
+						$target_index = isset( $op['targetIndex'] ) ? (int) $op['targetIndex'] : -1;
+						if ( $source_index < 0 || $target_index < 0 || ! isset( $localized[ $source_index ] ) ) {
+							continue;
+						}
+						$copy         = $localized[ $source_index ];
+						$target_index = min( $target_index, count( $localized ) );
+						array_splice( $localized, $target_index, 0, array( $copy ) );
+					} elseif ( 'delete' === $type ) {
+						$index = isset( $op['index'] ) ? (int) $op['index'] : -1;
+						if ( $index >= 0 && $index < count( $localized ) ) {
+							array_splice( $localized, $index, 1 );
+						}
 					}
-
-					$source_index = isset( $op['sourceIndex'] ) ? (int) $op['sourceIndex'] : -1;
-					$target_index = isset( $op['targetIndex'] ) ? (int) $op['targetIndex'] : -1;
-
-					if ( $source_index < 0 || $target_index < 0 || ! isset( $localized[ $source_index ] ) ) {
-						continue;
-					}
-
-					$copy = $localized[ $source_index ];
-					$target_index = min( $target_index, count( $localized ) );
-					array_splice( $localized, $target_index, 0, array( $copy ) );
 				}
 
-				// Repair older projects created before locale slide syncing existed.
-				// This safely covers the common case where newer English banners were
-				// appended but FR/USA still have fewer slides.
-				while ( count( $localized ) < count( $body['data'] ) ) {
-					$localized[] = $body['data'][ count( $localized ) ];
-				}
-
-				// Fill any field still empty in this locale from English (never overwrites).
-				$localized = JCS_CPT::fill_missing_from_english( $localized, $body['data'], $locale );
+				// English is the default: design, images and banner list come from English,
+				// this language keeps its own words and links.
+				$localized = JCS_CPT::merge_with_english( $localized, $body['data'] );
 
 				JCS_CPT::save_data( $id, $localized, $locale );
 			}
@@ -231,8 +229,7 @@ class JCS_REST {
 	}
 
 	/**
-	 * French / USA data with every empty field filled from English, so the
-	 * editor and the all-sites embed never show blank headings.
+	 * French / USA data = the English banner with that language's words and links.
 	 */
 	private function data_with_english_fallback( $id, $lang ) {
 		$data = JCS_CPT::get_data( $id, $lang );
@@ -243,7 +240,7 @@ class JCS_REST {
 		if ( empty( $english ) ) {
 			return $data;
 		}
-		return JCS_CPT::fill_missing_from_english( is_array( $data ) ? $data : array(), $english, $lang );
+		return JCS_CPT::merge_with_english( is_array( $data ) ? $data : array(), $english );
 	}
 
 	private function language( WP_REST_Request $request ) {

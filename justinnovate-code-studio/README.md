@@ -1,3 +1,9 @@
+## 0.3.43
+- English is the default. French and USA always use the English banner: design, layout, sizes, colours, settings, images and the list of banners. Only the words and links (Content tab) are their own. Empty words or links show the English ones.
+- Images can still be changed in French or USA for that site only; clear the image box to use the English image again.
+- In French / USA the other tabs are marked "Shared with English" and locked, and banners are added or removed in English only. Removing or duplicating a banner in English keeps each language's words on the right banner.
+- Opening French or USA no longer changes any links and no longer shows the link pop-up. "Copy code for all 3 sites" only switches links that still point to /ca-en/ (and only if the page exists on that site).
+
 ## 0.3.42
 - Switching EN / FR / USA keeps the banner you are on, the same side tab and Desktop/Mobile (no more jumping back to Banner 1).
 

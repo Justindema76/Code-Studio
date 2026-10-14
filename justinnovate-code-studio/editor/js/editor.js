@@ -950,7 +950,7 @@
       var b=document.createElement('button'); b.textContent='Banner '+(i+1); b.onclick=function(){ active=i; loadFields(); renderAll(); }; tab.appendChild(b);
       if(slides.length>1){
         var del=document.createElement('button'); del.className='jcs-slide-tab-delete'; del.title='Delete this banner'; del.textContent='\u00D7';
-        del.onclick=function(e){ e.stopPropagation(); if(!window.confirm('Delete Banner '+(i+1)+'?')) return; slides.splice(i,1); active = Math.max(0, active >= i ? active-1 : active); loadFields(); renderAll(); markDirty(); };
+        if(DATA.language!=='en'){ del.style.display='none'; } del.onclick=function(e){ e.stopPropagation(); if(!window.confirm('Delete Banner '+(i+1)+'?')) return; if(DATA.language==='en') localeOps.push({type:'delete', index:i}); slides.splice(i,1); active = Math.max(0, active >= i ? active-1 : active); loadFields(); renderAll(); markDirty(); };
         tab.appendChild(del);
       }
       wrap.appendChild(tab);
@@ -970,6 +970,7 @@
   el('jcsRemove').onclick=function(){
     if(slides.length===1){ window.alert('A project must contain at least one banner. Use New blank to reset it.'); return; }
     if(!window.confirm('Remove Banner '+(active+1)+'?')) return;
+    if(DATA.language==='en') localeOps.push({type:'delete', index:active});
     slides.splice(active,1); active=Math.max(0,active-1); loadFields(); renderAll(); markDirty();
   };
 
@@ -1318,31 +1319,6 @@ googleFontsLink() + '\n' +
         return {list:list, switched:switched, broken:broken};
       });
   }
-  function showLinkNotice(lang, result){
-    var siteName = lang === 'fr' ? 'French (ca-fr)' : 'USA (us)';
-    var old = document.getElementById('jcsLinkNotice'); if(old) old.remove();
-    if(!result.switched.length && !result.broken.length) return;
-    var box = document.createElement('div');
-    box.id = 'jcsLinkNotice';
-    box.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;max-width:460px;max-height:60vh;overflow:auto;background:#fff;color:#111;border:1px solid #ccc;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px 16px;font:13px/1.45 system-ui,sans-serif';
-    var labels = {buttonUrl:'Button URL', desktopBgLink:'Desktop banner link', mobileBgLink:'Mobile banner link'};
-    var html = '<button type="button" id="jcsLinkNoticeClose" style="float:right;border:0;background:none;font-size:18px;cursor:pointer">&times;</button>';
-    if(result.switched.length) html += '<b>' + result.switched.length + ' link(s) switched to the ' + siteName + ' site.</b><br>Click <b>Save</b> to keep them.';
-    if(result.broken.length){
-      html += (result.switched.length ? '<hr style="border:0;border-top:1px solid #eee;margin:10px 0">' : '') + '<b style="color:#b30f16">' + result.broken.length + ' link(s) have no page on the ' + siteName + ' site</b> — they still go to the Canada English page. Change these by hand:<ul style="margin:6px 0 0 18px;padding:0">';
-      result.broken.forEach(function(x){ html += '<li>Banner ' + (x.i + 1) + ' · ' + (labels[x.k] || x.k) + '<br><span style="color:#666;word-break:break-all">' + esc(x.from) + '</span></li>'; });
-      html += '</ul>';
-    }
-    box.innerHTML = html;
-    document.body.appendChild(box);
-    document.getElementById('jcsLinkNoticeClose').onclick = function(){ box.remove(); };
-  }
-  if(DATA.language === 'fr' || DATA.language === 'us'){
-    switchLinks(slides, DATA.language).then(function(result){
-      if(result.switched.length){ loadFields(); renderAll(); markDirty(); }
-      showLinkNotice(DATA.language, result);
-    }).catch(function(){ /* link check unavailable: leave links as they are */ });
-  }
   function fetchSite(lang){
     if(lang === (DATA.language || 'en')) return Promise.resolve(JSON.parse(JSON.stringify(slides)));
     return fetch(siteRestUrl(lang), {credentials:'same-origin', headers:{'X-WP-Nonce': DATA.nonce}})
@@ -1500,6 +1476,36 @@ googleFontsLink() + '\n' +
   document.addEventListener('keydown', function(e){
     if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); doSave(); }
   });
+
+  // ---------- FR / USA: English is the default ----------
+  // Design, layout, sizes, colours and settings always come from English. Here you
+  // change only the words and links (Content tab) and, if needed, this site's images.
+  if(DATA.language === 'fr' || DATA.language === 'us'){
+    var siteLabel = DATA.language === 'fr' ? 'French' : 'USA';
+    var keepEditable = ['fDeskImg','fMobImg'];
+    ['image','layout','gradient','style','settings'].forEach(function(name){
+      var panel = document.querySelector('.jcs-tabpanel[data-panel="'+name+'"]'); if(!panel) return;
+      var note = document.createElement('div');
+      note.style.cssText = 'margin:0 0 14px;padding:10px 12px;border-radius:8px;background:#fff8c5;color:#5c4400;font:600 12.5px/1.45 system-ui,sans-serif';
+      note.textContent = name === 'image'
+        ? 'Shared with English: change this in the EN tab. Only the images can be changed here: pick a different image for the '+siteLabel+' site, or clear the box to use English\'s image.'
+        : 'Shared with English: change this in the EN tab. '+siteLabel+' always uses the English design.';
+      panel.insertBefore(note, panel.firstChild);
+      [].slice.call(panel.querySelectorAll('input,select,textarea,button')).forEach(function(x){
+        if(keepEditable.indexOf(x.id) >= 0) return;
+        x.disabled = true;
+      });
+      if(name !== 'image'){
+        [].slice.call(panel.children).forEach(function(c){ if(c !== note){ c.style.opacity = '.45'; c.style.pointerEvents = 'none'; } });
+      }
+    });
+    ['jcsAdd','jcsDuplicate'].forEach(function(id){ var b = el(id); if(b){ b.disabled = true; b.title = 'Add banners in the EN tab — '+siteLabel+' follows English'; b.style.opacity = '.45'; } });
+    keepEditable.forEach(function(id){
+      el(id).addEventListener('input', function(){
+        cur().ownImages = !!(String(el('fDeskImg').value).trim() || String(el('fMobImg').value).trim());
+      });
+    });
+  }
 
   // ---------- keep the same banner, side tab and Desktop/Mobile when switching EN · FR · USA ----------
   var viewParams = new URLSearchParams(location.search);

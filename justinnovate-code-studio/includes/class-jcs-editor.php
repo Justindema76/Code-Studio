@@ -80,11 +80,12 @@ class JCS_Editor {
 				JCS_CPT::save_data( $post_id, $data, 'us' );
 			}
 		}
-		// French / USA: fill any field that is still empty from English (never overwrites).
+		// French / USA: English is the default. Show the English banner with this
+		// language's own words and links (and images only if changed here).
 		if ( 'en' !== $lang ) {
 			$english_data = JCS_CPT::get_data( $post_id, 'en' );
 			if ( ! empty( $english_data ) ) {
-				$data = JCS_CPT::fill_missing_from_english( is_array( $data ) ? $data : array(), $english_data, $lang );
+				$data = JCS_CPT::merge_with_english( is_array( $data ) ? $data : array(), $english_data );
 			}
 		}
 

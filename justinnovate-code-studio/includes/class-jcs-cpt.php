@@ -164,34 +164,44 @@ class JCS_CPT {
 		return update_post_meta( $post_id, $key, wp_slash( $json ) );
 	}
 
+	/** Fields that belong to each language. Everything else always comes from English. */
+	const LOCALE_KEYS = array( 'eyebrow', 'heading', 'subheading', 'buttonText', 'altText', 'buttonUrl', 'desktopBgLink', 'mobileBgLink' );
+
 	/**
-	 * French / USA banners start as a copy of English, but later English edits
-	 * never reached them, so fields that were empty at copy time stayed empty.
-	 * This fills every EMPTY field from English (links are switched to the right
-	 * site by the editor, which first checks the page exists there);
-	 * anything already written in French / USA is never overwritten.
+	 * English is the default: French / USA = the English banner (design, layout,
+	 * sizes, colours, images, settings) with that language's own words and links
+	 * on top. Empty words/links fall back to English. A language keeps its own
+	 * images only when they were changed in that language (ownImages).
+	 * The banner list always follows English.
 	 */
-	public static function fill_missing_from_english( array $localized, array $english, $lang ) {
-		foreach ( $english as $index => $en_slide ) {
+	public static function merge_with_english( array $localized, array $english ) {
+		$localized = array_values( $localized );
+		$out       = array();
+		foreach ( array_values( $english ) as $index => $en_slide ) {
 			if ( ! is_array( $en_slide ) ) {
 				continue;
 			}
-			if ( ! isset( $localized[ $index ] ) || ! is_array( $localized[ $index ] ) ) {
-				$localized[ $index ] = $en_slide;
-				continue;
-			}
-			foreach ( $en_slide as $key => $value ) {
-				if ( null === $value || ( is_string( $value ) && '' === trim( $value ) ) ) {
-					continue;
+			$slide = $en_slide;
+			$loc   = ( isset( $localized[ $index ] ) && is_array( $localized[ $index ] ) ) ? $localized[ $index ] : null;
+			unset( $slide['ownImages'] );
+			if ( $loc ) {
+				foreach ( self::LOCALE_KEYS as $key ) {
+					if ( isset( $loc[ $key ] ) && is_string( $loc[ $key ] ) && '' !== trim( $loc[ $key ] ) ) {
+						$slide[ $key ] = $loc[ $key ];
+					}
 				}
-				$current  = array_key_exists( $key, $localized[ $index ] ) ? $localized[ $index ][ $key ] : null;
-				$is_empty = ( null === $current ) || ( is_string( $current ) && '' === trim( $current ) );
-				if ( $is_empty ) {
-					$localized[ $index ][ $key ] = $value;
+				if ( ! empty( $loc['ownImages'] ) ) {
+					foreach ( array( 'desktopImage', 'mobileImage' ) as $key ) {
+						if ( isset( $loc[ $key ] ) && is_string( $loc[ $key ] ) && '' !== trim( $loc[ $key ] ) ) {
+							$slide[ $key ] = $loc[ $key ];
+						}
+					}
+					$slide['ownImages'] = true;
 				}
 			}
+			$out[] = $slide;
 		}
-		return array_values( $localized );
+		return $out;
 	}
 
 	public static function get_element_type( $post_id ) {
