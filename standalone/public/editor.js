@@ -418,6 +418,7 @@ googleFontsLink() + '\n' +
   var root = document.getElementById('jcs-root');
   var PW = 345;                 // real phone banner width on wheelsauto.com
   var deskW = 893;              // homepage hero slot; can switch to full width
+  var view = 'both'; try { view = localStorage.getItem('cs-view') || 'both'; } catch(e){}
   var sel = 'content', panel = 'piece', links = {}, openGroups = {}, gDev = 'd';
   var FONTS = fontLibrary();
   var WEIGHTS = [['300','300 Light'],['400','400 Regular'],['500','500 Medium'],['600','600 Semi-bold'],['700','700 Bold'],['800','800 Extra-bold'],['900','900 Black']];
@@ -507,9 +508,10 @@ googleFontsLink() + '\n' +
         '<aside class="cs-rail"><div class="cs-cap">Slides</div><div id="csSlides"></div><button class="cs-add" id="csAdd">+ Add slide</button>' +
           '<div class="cs-cap">Whole slider</div><button class="cs-railbtn" id="csSliderBtn">Slider settings <span>›</span></button></aside>' +
         '<main class="cs-stage" id="csStage">' +
+          '<div class="cs-viewbar"><span>Show</span><div class="cs-seg" id="csView"><button data-v="desktop">Desktop</button><button data-v="phone">Phone</button><button data-v="both">Both</button></div></div>' +
           '<div class="cs-pvs">' +
-            '<div class="cs-pv"><div class="cs-pvh"><b>Desktop</b><div class="cs-seg cs-w" id="csDeskW"><button data-w="893">Hero 893</button><button data-w="1290">Full width 1290</button></div><span id="csDLbl"></span></div><div class="cs-box" id="csDBox"><iframe id="csDFrame" title="Desktop preview"></iframe></div></div>' +
-            '<div class="cs-pv cs-phone"><div class="cs-pvh"><b>Phone</b><span id="csPLbl"></span></div><div class="cs-box" id="csPBox"><iframe id="csPFrame" title="Phone preview"></iframe></div></div>' +
+            '<div class="cs-pv" id="csDesk"><div class="cs-pvh"><b>Desktop</b><div class="cs-seg cs-w" id="csDeskW"><button data-w="893">Hero 893</button><button data-w="1290">Full width 1290</button></div><span id="csDLbl"></span></div><div class="cs-box" id="csDBox"><iframe id="csDFrame" title="Desktop preview"></iframe></div></div>' +
+            '<div class="cs-pv cs-phone" id="csPhone"><div class="cs-pvh"><b>Phone</b><span id="csPLbl"></span></div><div class="cs-box" id="csPBox"><iframe id="csPFrame" title="Phone preview"></iframe></div></div>' +
           '</div>' +
           '<div class="cs-hint"><b>Click any piece of the banner to edit it. Drag it to move it.</b> Desktop and Phone are always both on screen, built from the same code you copy into the website.</div>' +
           '<details class="cs-code"><summary>Embed code</summary><textarea id="csCode" readonly></textarea><button class="cs-tb cs-pri" id="csCopyCode2">Copy embed code</button></details>' +
@@ -554,9 +556,36 @@ googleFontsLink() + '\n' +
     for(var i=0;i<PIECE_SEL.length;i++){ var n = target.closest(PIECE_SEL[i][0]); if(n) return {key:PIECE_SEL[i][1], node:n}; }
     return null;
   }
+  // The area the text really covers (old per-piece nudges can push pieces outside the box itself)
+  function textRect(doc){
+    var box = doc.querySelector('.csx-content'); if(!box) return null;
+    var r = null;
+    box.querySelectorAll('.csx-eyebrow,.csx-heading,.csx-sub,.csx-button').forEach(function(n){
+      var b = n.getBoundingClientRect(); if(!b.width || !b.height || !n.textContent.trim()) return;
+      r = r ? { left:Math.min(r.left,b.left), top:Math.min(r.top,b.top), right:Math.max(r.right,b.right), bottom:Math.max(r.bottom,b.bottom) } : { left:b.left, top:b.top, right:b.right, bottom:b.bottom };
+    });
+    if(!r){ var bb = box.getBoundingClientRect(); r = { left:bb.left, top:bb.top, right:bb.right, bottom:bb.bottom }; }
+    r.width = r.right - r.left; r.height = r.bottom - r.top;
+    return r;
+  }
+  function markSel(doc){
+    doc.querySelectorAll('.cs-sel').forEach(function(n){ n.classList.remove('cs-sel'); });
+    doc.querySelectorAll('.cs-selbox').forEach(function(n){ n.remove(); });
+    if(panel !== 'piece') return;
+    if(sel === 'content'){
+      var root = doc.querySelector('.csx-banner-root'), r = textRect(doc); if(!root || !r) return;
+      var rr = root.getBoundingClientRect(), b = doc.createElement('div');
+      b.className = 'cs-selbox';
+      b.style.cssText = 'position:absolute;z-index:19;pointer-events:none;outline:2px solid #2f5bea;outline-offset:4px;left:'+(r.left-rr.left)+'px;top:'+(r.top-rr.top)+'px;width:'+r.width+'px;height:'+r.height+'px';
+      root.appendChild(b);
+      return;
+    }
+    PIECE_SEL.forEach(function(p){ if(p[1] === sel) doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-sel'); }); });
+  }
   function wireFrame(frame, phone){
     var doc = frame.contentDocument;
-    PIECE_SEL.forEach(function(p){ doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-piece'); if(panel==='piece' && sel===p[1]) n.classList.add('cs-sel'); }); });
+    PIECE_SEL.forEach(function(p){ if(p[1] !== 'content') doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-piece'); }); });
+    markSel(doc);
     // never follow links inside the editor preview
     doc.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('a')) e.preventDefault(); }, true);
     var drag = null, SNAP = 8;
@@ -576,7 +605,7 @@ googleFontsLink() + '\n' +
       if(!p){ select('bg'); return; }
       var box = doc.querySelector('.csx-content');
       var xk = phone ? 'mobileContentShiftX' : 'contentShiftX', yk = phone ? 'mobileContentShiftY' : 'contentShiftY';
-      var rr = root.getBoundingClientRect(), cr = box.getBoundingClientRect();
+      var rr = root.getBoundingClientRect(), cr = textRect(doc);
       var pad = Number(phone ? (cur().mobileContentPadding != null ? cur().mobileContentPadding : cur().contentPadding) : cur().contentPadding) || 0;
       drag = { x:e.clientX, y:e.clientY, ox:Number(cur()[xk])||0, oy:Number(cur()[yk])||0, xk:xk, yk:yk, box:box, root:root, key:p.key, moved:false,
         rr:rr, cr:cr, pad:pad,
@@ -604,6 +633,7 @@ googleFontsLink() + '\n' +
       cur()[drag.xk] = nx; cur()[drag.yk] = ny;
       if(phone){ drag.box.style.setProperty('--jcs-m-shiftx', nx+'px'); drag.box.style.setProperty('--jcs-m-shifty', ny+'px'); }
       else drag.box.style.transform = 'translate('+nx+'px,'+ny+'px)';
+      markSel(doc);
       clearGuides();
       guide(drag.root, true, rr.width/2, snapV === 'center');
       guide(drag.root, false, rr.height/2, snapH);
@@ -623,7 +653,11 @@ googleFontsLink() + '\n' +
     var s0 = slides[0], bs = bannerSettings();
     var dh = Number(cur().desktopHeight || s0.desktopHeight || 490), ph = Number(cur().mobileHeight || s0.mobileHeight || 620);
     var stage = el('csStage');
-    var avail = stage.clientWidth - 40 - 26 - PW - 26 - 18;
+    var showD = view !== 'phone', showP = view !== 'desktop';
+    el('csDesk').style.display = showD ? '' : 'none';
+    el('csPhone').style.display = showP ? '' : 'none';
+    el('csView').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === view); });
+    var avail = stage.clientWidth - 40 - 26 - (showP ? PW + 26 + 18 : 0);
     if(avail < 320) avail = stage.clientWidth - 40 - 26; // phone wraps underneath
     var sc = Math.min(1, Math.max(.3, avail / deskW));
     var vw = Math.max(deskW, bs.breakpoint + 1);   // viewport wider than the breakpoint = desktop layout
@@ -644,8 +678,8 @@ googleFontsLink() + '\n' +
     pending = setTimeout(function(){
       pending = null;
       scalePreviews();
-      writeFrame(el('csDFrame'), deskW, false);
-      writeFrame(el('csPFrame'), PW, true);
+      if(view !== 'phone') writeFrame(el('csDFrame'), deskW, false);
+      if(view !== 'desktop') writeFrame(el('csPFrame'), PW, true);
     }, 16);
   }
   function renderCode(){ el('csCode').value = generateCode(); }
@@ -665,7 +699,9 @@ googleFontsLink() + '\n' +
 
   // ---------- right panel ----------
   function isLinked(c){
-    if(links[c.d] === undefined) links[c.d] = JSON.stringify(cur()[c.d]) === JSON.stringify(cur()[c.p]);
+    var same = JSON.stringify(cur()[c.d]) === JSON.stringify(cur()[c.p]);
+    // linked only while Phone really matches Desktop; any separate phone change unlinks it
+    if(links[c.d] === undefined || !same) links[c.d] = same;
     return links[c.d];
   }
   function rangeInput(c, k, v){
@@ -679,7 +715,7 @@ googleFontsLink() + '\n' +
     var s = cur();
     if(c.t === 'phonePlace'){
       return '<div class="cs-f"><span class="cs-lb">Where the text sits on the phone</span><div class="cs-seg" data-place><button data-v="over">On the picture</button><button data-v="under">Under the picture</button></div>' +
-        '<p class="cs-note">"Under the picture" moves the text to the bottom of the phone banner, adds dark shading behind it, and clears the up/down nudges.</p></div>';
+        '<p class="cs-note"><b>Under the picture</b>: puts the phone text at the bottom of the banner, centred, and clears the old one-by-one phone nudges. It does not change your picture, gradient or colours (those are under Background).<br><b>On the picture</b>: puts the text back in the middle.</p></div>';
     }
     if(c.t === 'imgs'){
       var warn = noPhonePic(s) && s.desktopImage ? '<div class="cs-warn"><b>No phone picture.</b> Phones get the wide desktop picture squeezed into a tall screen. Add a tall phone picture.</div>' : '';
@@ -782,8 +818,7 @@ googleFontsLink() + '\n' +
     panel = 'piece'; sel = k; renderRail(); renderSide();
     if(!keepPreview) renderPreviews();
     else ['csDFrame','csPFrame'].forEach(function(id){ var d = el(id).contentDocument; if(!d) return;
-      d.querySelectorAll('.cs-sel').forEach(function(n){ n.classList.remove('cs-sel'); });
-      PIECE_SEL.forEach(function(p){ if(p[1]===k) d.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-sel'); }); }); });
+      markSel(d); });
   }
   function refresh(){ renderRail(); renderSide(); renderPreviews(); renderCode(); }
 
@@ -835,9 +870,7 @@ googleFontsLink() + '\n' +
         ['Eyebrow','Heading','Sub','Button'].forEach(function(n){ s['mobile'+n+'ShiftX'] = 0; s['mobile'+n+'ShiftY'] = 0; });
         s.mobileContentShiftX = 0; s.mobileContentShiftY = 0;
         s.mobileContentAlign = 'flex-end'; s.mobileContentSide = 'center'; s.mobileTextAlign = 'center';
-        s.mobileY = 0;
-        s.mobileGradient = { type:'linear', angle:0, radialX:0, radialY:50, stops:[{pos:0,color:'#000000',opacity:.95},{pos:42,color:'#000000',opacity:.85},{pos:58,color:'#000000',opacity:0},{pos:100,color:'#000000',opacity:0}] };
-        toast('Phone: text moved under the picture');
+        toast('Phone: text moved to the bottom, centred. Picture and colours unchanged.');
       } else { s.mobileContentAlign = 'center'; toast('Phone: text on the picture'); }
       markDirty(); renderSide(); renderPreviews(); renderCode(); return;
     }
@@ -892,6 +925,7 @@ googleFontsLink() + '\n' +
     slides.push(n); active = slides.length-1; links = {}; markDirty(); select('heading'); renderCode();
   };
   el('csSliderBtn').onclick = function(){ panel = panel === 'slider' ? 'piece' : 'slider'; renderRail(); renderSide(); renderPreviews(); };
+  el('csView').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; view = b.getAttribute('data-v'); try { localStorage.setItem('cs-view', view); } catch(err){} renderPreviews(); });
   el('csDeskW').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; deskW = Number(b.getAttribute('data-w')); renderPreviews(); });
 
   // ---------- top bar ----------
@@ -968,6 +1002,16 @@ googleFontsLink() + '\n' +
   window.addEventListener('resize', renderPreviews);
 
   // ---------- init ----------
-  refresh();
+  // Wait for the empty preview frames to finish loading once; writing into them earlier
+  // gets wiped by their own first load (and with it the click/drag wiring).
+  renderRail(); renderSide(); renderCode();
+  var framesLeft = 2, started = false;
+  function startPreviews(){ if(started) return; started = true; renderPreviews(); }
+  ['csDFrame','csPFrame'].forEach(function(id){
+    var f = el(id);
+    f.addEventListener('load', function once(){ f.removeEventListener('load', once); if(--framesLeft === 0) startPreviews(); });
+    f.src = 'about:blank';
+  });
+  setTimeout(startPreviews, 800);
 
 })();

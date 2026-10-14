@@ -39,6 +39,8 @@ html,body{margin:0;padding:0}
 .cs .cs-add{width:100%;border:1.5px dashed #c4c4c8;border-radius:10px;padding:9px;color:var(--muted);font-weight:600;margin-bottom:14px}
 .cs .cs-railbtn{width:100%;text-align:left;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-weight:600;display:flex;justify-content:space-between}
 .cs .cs-railbtn.on{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
+.cs-viewbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--muted)}
+.cs-viewbar .cs-seg{flex:none;background:#e9e9ec}
 .cs-pvs{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
 .cs-pv{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
 .cs-pvh{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
