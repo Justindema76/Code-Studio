@@ -138,6 +138,33 @@ function dashboard() {
   }
 }
 
+// ---------- French translation (free MyMemory service, line by line) ----------
+async function translateToFrench(source) {
+  if (!source?.length) throw new Error('Save the English banner first.')
+  const fields = ['eyebrow', 'heading', 'subheading', 'buttonText', 'altText']
+  const translated = structuredClone(source)
+  for (const slide of translated) {
+    for (const field of fields) {
+      if (!slide[field]?.trim()) continue
+      const lines = slide[field].split('\n')
+      for (let index = 0; index < lines.length; index++) {
+        if (!lines[index].trim()) continue
+        const query = new URLSearchParams({ q: lines[index], langpair: 'en|fr' })
+        const response = await fetch('https://api.mymemory.translated.net/get?' + query)
+        if (!response.ok) throw new Error('Translation service is unavailable (' + response.status + ').')
+        const result = await response.json()
+        if (result.responseStatus !== 200 || !result.responseData?.translatedText)
+          throw new Error('Translation service could not translate the ' + field + ' text.')
+        const decoder = document.createElement('textarea')
+        decoder.innerHTML = result.responseData.translatedText
+        lines[index] = decoder.value
+      }
+      slide[field] = lines.join('\n')
+    }
+  }
+  return translated
+}
+
 // ---------- editor ----------
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -161,12 +188,14 @@ function edit(id, lang) {
   const slides = row[lang]?.length ? row[lang] : row.en
   app.replaceChildren(el('div', { id: 'jcs-root' }))
   document.body.className = 'jcs-editor-body'
-  if (!document.querySelector('#editor-css')) document.head.append(el('link', { id: 'editor-css', rel: 'stylesheet', href: import.meta.env.BASE_URL + 'editor.css?version=redesign-7' }))
+  if (!document.querySelector('#editor-css')) document.head.append(el('link', { id: 'editor-css', rel: 'stylesheet', href: import.meta.env.BASE_URL + 'editor.css?version=redesign-8' }))
   window.JCS_EDITOR_DATA = {
     postId: row.id, title: row.title, slides: JSON.parse(JSON.stringify(slides || [])),
     language: lang, languageLabel: { en: 'English', fr: 'French', us: 'USA' }[lang],
     listUrl: '#/', englishUrl: editorHref(id, 'en'), frenchUrl: editorHref(id, 'fr'), usaUrl: editorHref(id, 'us'),
     settings,
+    // uses the latest saved English version of this banner
+    translate: async () => translateToFrench(projects().find(item => item.id === id)?.en),
     upload: async file => {
       if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) throw new Error('Choose a PNG, JPEG, WebP or GIF image.')
       if (file.size > 2 * 1024 * 1024) throw new Error('Images saved in the browser must be under 2 MB. Use an image link for bigger pictures.')
@@ -181,7 +210,7 @@ function edit(id, lang) {
   }
   const old = document.getElementById('editor-js')
   if (old) old.remove()
-  app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=redesign-7' }))
+  app.append(el('script', { id: 'editor-js', src: import.meta.env.BASE_URL + 'editor.js?version=redesign-8' }))
 }
 
 function route() {
