@@ -1,36 +1,26 @@
 # Standalone Code Studio
 
-This is the standalone version of the existing WordPress Code Studio banner editor.
-It uses the same editor controls and slide JSON, but stores projects in Supabase.
-The WordPress plugin remains in `../justinnovate-code-studio/` and is not changed.
+The standalone version of the Code Studio banner editor, for showing people.
+It opens straight in (no login) and keeps projects in the browser you use it in
+(localStorage). Use **Download backup** / **Import project JSON** to move projects.
 
-## What works
+## Editor (redesign)
 
-- Email/password sign in through Supabase Auth.
-- Owner-only banner projects with English, French, and USA variants.
-- Existing canvas controls, slide management, preview, embedded HTML export, and project JSON import.
-- PNG/JPEG/WebP/GIF uploads to Supabase Storage; URL fields also accept existing remote images.
-- Download an account-wide JSON backup and import that backup or a legacy slide-array JSON export.
+- Click any piece of the banner (Red label, Heading, Small text, Button, Text box,
+  Background) in the Desktop or Phone preview to edit it; drag it to move it.
+- Desktop (hero 893 or full width 1290) and Phone (345, the real phone width on
+  wheelsauto.com) previews are always both on screen, rendered from the exact embed code.
+- Every size/position control shows Desktop and Phone side by side, with a link so
+  Phone can follow Desktop.
+- Text box → "Under the picture" puts phone text below the photo in one click.
+- Apply to all slides, Slider settings, slide reorder/duplicate/delete, gradient editor,
+  overlay, links, Live preview, Load code / project, Copy project JSON, Copy embed code.
 
-The old WordPress data does **not** automatically appear. Import an exported project JSON
-or a backup extracted from WordPress after regaining access. Existing image URLs must
-remain reachable; upload images into this app for independence from the old host.
-French auto-translation is hidden until a separate translation service is connected.
+The banner engine (data model, embed code, import) in `public/editor.js` is copied unchanged
+from `../justinnovate-code-studio/editor/js/editor.js`, so exported embed code is identical to
+the WordPress plugin's. Keep those parts in sync.
 
-## Configure
+## Run
 
-1. The app uses the existing **JustConsignIN** Supabase project inside the
-   **JustInnovate** organization. Its Code Studio table and image bucket are
-   separate from consignment data. The migration in
-   `supabase/migrations/20260925140000_code_studio.sql` has been applied.
-2. Enable Email authentication and create/invite your user in that project's Auth
-   settings. The app does not expose public sign-up.
-3. For local development copy `.env.example` to `.env` and set the same
-   project URL and publishable key. The committed `.env.production` includes
-   only the browser-safe publishable key; never use a secret/service role key.
-4. Run `npm ci && npm run dev`. GitHub Actions builds the app for
-   `/Code-Studio/` and deploys it to GitHub Pages.
-
-The standalone app uses hash routes such as `#/edit/{id}/en`, so a static host
-does not need server-side route rewrites. Keep the WordPress instance untouched
-until its saved project JSON has been backed up and imported.
+`npm ci && npm run dev`. GitHub Actions builds for `/Code-Studio/` and deploys to GitHub Pages
+when `standalone/**` changes on `main` or `standalone-supabase`.
