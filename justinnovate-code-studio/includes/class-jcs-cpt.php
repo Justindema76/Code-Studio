@@ -170,9 +170,10 @@ class JCS_CPT {
 	/**
 	 * English is the default: French / USA = the English banner (design, layout,
 	 * sizes, colours, images, settings) with that language's own words and links
-	 * on top. Empty words/links fall back to English. A language keeps its own
-	 * images only when they were changed in that language (ownImages).
-	 * The banner list always follows English.
+	 * on top (empty ones fall back to English). Any other setting changed in
+	 * French / USA is remembered in "_own" and kept for that language only;
+	 * everything not changed there keeps following English. The banner list
+	 * always follows English.
 	 */
 	public static function merge_with_english( array $localized, array $english ) {
 		$localized = array_values( $localized );
@@ -182,21 +183,33 @@ class JCS_CPT {
 				continue;
 			}
 			$slide = $en_slide;
-			$loc   = ( isset( $localized[ $index ] ) && is_array( $localized[ $index ] ) ) ? $localized[ $index ] : null;
-			unset( $slide['ownImages'] );
+			unset( $slide['_own'], $slide['ownImages'] );
+			$loc = ( isset( $localized[ $index ] ) && is_array( $localized[ $index ] ) ) ? $localized[ $index ] : null;
 			if ( $loc ) {
 				foreach ( self::LOCALE_KEYS as $key ) {
 					if ( isset( $loc[ $key ] ) && is_string( $loc[ $key ] ) && '' !== trim( $loc[ $key ] ) ) {
 						$slide[ $key ] = $loc[ $key ];
 					}
 				}
+				$own = ( isset( $loc['_own'] ) && is_array( $loc['_own'] ) ) ? $loc['_own'] : array();
 				if ( ! empty( $loc['ownImages'] ) ) {
-					foreach ( array( 'desktopImage', 'mobileImage' ) as $key ) {
-						if ( isset( $loc[ $key ] ) && is_string( $loc[ $key ] ) && '' !== trim( $loc[ $key ] ) ) {
-							$slide[ $key ] = $loc[ $key ];
-						}
+					$own['desktopImage'] = true;
+					$own['mobileImage']  = true;
+				}
+				$kept = array();
+				foreach ( $own as $key => $flag ) {
+					if ( ! $flag || in_array( $key, self::LOCALE_KEYS, true ) || ! array_key_exists( $key, $loc ) ) {
+						continue;
 					}
-					$slide['ownImages'] = true;
+					// An emptied image means "use the English image again".
+					if ( in_array( $key, array( 'desktopImage', 'mobileImage' ), true ) && ( ! is_string( $loc[ $key ] ) || '' === trim( $loc[ $key ] ) ) ) {
+						continue;
+					}
+					$slide[ $key ] = $loc[ $key ];
+					$kept[ $key ]  = true;
+				}
+				if ( $kept ) {
+					$slide['_own'] = $kept;
 				}
 			}
 			$out[] = $slide;

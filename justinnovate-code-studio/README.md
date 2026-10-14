@@ -1,3 +1,9 @@
+## 0.3.44
+- Nothing is locked in French or USA any more. Everything follows English by default (gradient, images, position, sizes, colours, settings), and every English change carries over.
+- Anything you change in French or USA is remembered and kept for that site only; settings you didn't touch there keep following English.
+- New "Use English design for this banner" button in French / USA undoes that site's own design changes on the banner (words and links stay).
+- Adding / removing banners stays in English so all three sites keep the same banners.
+
 ## 0.3.43
 - English is the default. French and USA always use the English banner: design, layout, sizes, colours, settings, images and the list of banners. Only the words and links (Content tab) are their own. Empty words or links show the English ones.
 - Images can still be changed in French or USA for that site only; clear the image box to use the English image again.

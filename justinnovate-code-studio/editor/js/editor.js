@@ -1447,9 +1447,10 @@ googleFontsLink() + '\n' +
   el('jcsTitle').value = DATA.title || '';
   el('jcsTitle').addEventListener('input', markDirty);
 
-  function doSave(){
+  function doSave(after){
     var status = el('jcsStatus'); var btn = el('jcsSave');
     btn.disabled = true; status.textContent = 'Saving…';
+    if(DATA.language === 'fr' || DATA.language === 'us') markOwnEdits();
     fetch(DATA.restUrl, {
       method: 'POST',
       credentials: 'same-origin',
@@ -1466,7 +1467,9 @@ googleFontsLink() + '\n' +
           return parsed;
         });
       })
-      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false; })
+      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false;
+        if(DATA.language === 'fr' || DATA.language === 'us') localeBaseline = JSON.parse(JSON.stringify(slides));
+        if(typeof after === 'function') after(); })
       .catch(function(err){ status.textContent = 'Save failed: ' + err.message + ' (see console)'; btn.disabled = false; });
   }
   el('jcsSave').onclick = doSave;
@@ -1478,33 +1481,36 @@ googleFontsLink() + '\n' +
   });
 
   // ---------- FR / USA: English is the default ----------
-  // Design, layout, sizes, colours and settings always come from English. Here you
-  // change only the words and links (Content tab) and, if needed, this site's images.
+  // Everything follows English. Anything you change here is remembered and kept
+  // for this site only; settings you don't touch keep following English.
+  var LOCALE_KEYS = ['eyebrow','heading','subheading','buttonText','altText','buttonUrl','desktopBgLink','mobileBgLink'];
+  var localeBaseline = null;
+  function markOwnEdits(){
+    if(!localeBaseline) return;
+    slides.forEach(function(s, i){
+      var base = localeBaseline[i]; if(!base) return;
+      Object.keys(s).forEach(function(k){
+        if(k === '_own' || k === 'ownImages' || LOCALE_KEYS.indexOf(k) >= 0) return;
+        if(JSON.stringify(s[k]) !== JSON.stringify(base[k])){ s._own = s._own || {}; s._own[k] = true; }
+      });
+    });
+  }
   if(DATA.language === 'fr' || DATA.language === 'us'){
     var siteLabel = DATA.language === 'fr' ? 'French' : 'USA';
-    var keepEditable = ['fDeskImg','fMobImg'];
-    ['image','layout','gradient','style','settings'].forEach(function(name){
-      var panel = document.querySelector('.jcs-tabpanel[data-panel="'+name+'"]'); if(!panel) return;
-      var note = document.createElement('div');
-      note.style.cssText = 'margin:0 0 14px;padding:10px 12px;border-radius:8px;background:#fff8c5;color:#5c4400;font:600 12.5px/1.45 system-ui,sans-serif';
-      note.textContent = name === 'image'
-        ? 'Shared with English: change this in the EN tab. Only the images can be changed here: pick a different image for the '+siteLabel+' site, or clear the box to use English\'s image.'
-        : 'Shared with English: change this in the EN tab. '+siteLabel+' always uses the English design.';
-      panel.insertBefore(note, panel.firstChild);
-      [].slice.call(panel.querySelectorAll('input,select,textarea,button')).forEach(function(x){
-        if(keepEditable.indexOf(x.id) >= 0) return;
-        x.disabled = true;
-      });
-      if(name !== 'image'){
-        [].slice.call(panel.children).forEach(function(c){ if(c !== note){ c.style.opacity = '.45'; c.style.pointerEvents = 'none'; } });
-      }
-    });
-    ['jcsAdd','jcsDuplicate'].forEach(function(id){ var b = el(id); if(b){ b.disabled = true; b.title = 'Add banners in the EN tab — '+siteLabel+' follows English'; b.style.opacity = '.45'; } });
-    keepEditable.forEach(function(id){
-      el(id).addEventListener('input', function(){
-        cur().ownImages = !!(String(el('fDeskImg').value).trim() || String(el('fMobImg').value).trim());
-      });
-    });
+    localeBaseline = JSON.parse(JSON.stringify(slides));
+    ['jcsAdd','jcsDuplicate'].forEach(function(id){ var b = el(id); if(b){ b.disabled = true; b.title = 'Add banners in the EN tab: '+siteLabel+' uses the same banners as English'; b.style.opacity = '.45'; } });
+    var resetBtn = document.createElement('button');
+    resetBtn.type = 'button'; resetBtn.className = 'jcs-btn secondary panel';
+    resetBtn.style.cssText = 'width:100%;margin:6px 0 10px';
+    resetBtn.textContent = 'Use English design for this banner';
+    resetBtn.title = 'Undo the '+siteLabel+'-only design changes on this banner (your words and links stay)';
+    resetBtn.onclick = function(){
+      if(!window.confirm('Make Banner '+(active+1)+' look exactly like English again? Your '+siteLabel+' words and links stay.')) return;
+      delete cur()._own; delete cur().ownImages;
+      localeBaseline = null;   /* save without marking anything as changed */
+      doSave(function(){ location.reload(); });
+    };
+    var slideTabs = el('jcsSlideTabs'); if(slideTabs && slideTabs.parentNode) slideTabs.parentNode.insertBefore(resetBtn, slideTabs.nextSibling);
   }
 
   // ---------- keep the same banner, side tab and Desktop/Mobile when switching EN · FR · USA ----------
