@@ -48,3 +48,8 @@
 - Early designs recovered: `Homepage-Redesign/EARLY DESIGNS/`.
 - Code Studio redesign previews: `Code-Studio-Redesign/` (preview 1 simple, preview 2 all controls).
 - Deleted old `Plate-Cover-Designer/` folder (still in git history).
+
+## Update (end of day)
+- Standalone is now **published** at https://justindema76.github.io/Code-Studio/ from branch `standalone-redesign` (GitHub Pages Source = GitHub Actions; every push to that branch updates the site). `main` / WordPress plugin untouched.
+- Existing banners move over one at a time: old Code Studio → Copy project JSON (or embed code) → standalone → More → Load code / project → Save (repeat on FR / USA tabs).
+- **Tomorrow: talk about the Adobe Commerce extension** (getting the name out there).
