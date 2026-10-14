@@ -667,6 +667,11 @@ googleFontsLink() + '\n' +
       if(!root || e.target.closest('.jcsx-nav')) return;
       var p = pieceOf(e.target);
       e.preventDefault();
+      // empty space inside the text box (it can be much bigger than the visible text) belongs to the picture
+      if(p && p.key === 'content'){
+        var tr = textRect(doc);
+        if(!tr || e.clientX < tr.left - 6 || e.clientX > tr.right + 6 || e.clientY < tr.top - 6 || e.clientY > tr.bottom + 6) p = null;
+      }
       if(!p){
         // the picture: drag to move, drag a corner to resize
         var bgNode = root.querySelector('.csx-bg');
@@ -756,7 +761,9 @@ googleFontsLink() + '\n' +
     var wheelTimer = null;
     doc.addEventListener('wheel', function(e){
       var root = e.target.closest && e.target.closest('.csx-banner-root');
-      if(!root || pieceOf(e.target) || sel !== 'bg' || panel !== 'piece') return;
+      var wp = pieceOf(e.target);
+      if(wp && wp.key === 'content'){ var wr = textRect(doc); if(!wr || e.clientX < wr.left || e.clientX > wr.right || e.clientY < wr.top || e.clientY > wr.bottom) wp = null; }
+      if(!root || wp || sel !== 'bg' || panel !== 'piece') return;
       var g0 = imgGeom(cur(), phone, root.clientWidth, root.clientHeight), node = root.querySelector('.csx-bg');
       if(!g0 || !node) return;
       e.preventDefault();
