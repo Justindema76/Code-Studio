@@ -58,7 +58,7 @@ function updateProject(id, fields) {
 function deleteProject(id) { persist(projects().filter(item => item.id !== id)) }
 
 async function seedSample() {
-  if (localStorage.getItem(STORAGE_KEY) !== null) return
+  if (projects().length) return   // the sample comes back whenever the list is empty
   try {
     const sample = await (await fetch(import.meta.env.BASE_URL + 'sample-project.json')).json()
     persist([])
