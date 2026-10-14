@@ -1,3 +1,6 @@
+## 0.3.45
+- The link pop-up is back in French / USA, but it never changes links on its own: it lists links that still go to /ca-en/, shows the French / USA page when one exists with a "Use this link" button, and says "change it by hand" when there is none.
+
 ## 0.3.44
 - Nothing is locked in French or USA any more. Everything follows English by default (gradient, images, position, sizes, colours, settings), and every English change carries over.
 - Anything you change in French or USA is remembered and kept for that site only; settings you didn't touch there keep following English.

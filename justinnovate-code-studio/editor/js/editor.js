@@ -1319,6 +1319,56 @@ googleFontsLink() + '\n' +
         return {list:list, switched:switched, broken:broken};
       });
   }
+  // FR / USA: tell you which links still go to the Canada English site. Nothing is
+  // changed automatically: you click "Use this link" yourself.
+  function checkOnlyLinks(list, lang){
+    var plan = [];
+    (list || []).forEach(function(s, i){
+      SITE_URL_KEYS.forEach(function(k){
+        var from = s && s[k], to = localizeUrl(from, lang);
+        if(typeof from === 'string' && to !== from) plan.push({i:i, k:k, from:from, to:to});
+      });
+    });
+    if(!plan.length) return Promise.resolve([]);
+    var urls = plan.map(function(x){ return x.to; }).filter(function(u, n, a){ return a.indexOf(u) === n; });
+    return fetch(checkLinksUrl(), {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-WP-Nonce': DATA.nonce}, body: JSON.stringify({urls: urls})})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(res){ var ok = (res && res.results) || {}; plan.forEach(function(x){ x.exists = !!ok[x.to]; }); return plan; });
+  }
+  function showLinkReport(lang, plan){
+    var old = document.getElementById('jcsLinkNotice'); if(old) old.remove();
+    if(!plan.length) return;
+    var siteName = lang === 'fr' ? 'French (ca-fr)' : 'USA (us)';
+    var labels = {buttonUrl:'Button URL', desktopBgLink:'Desktop banner link', mobileBgLink:'Mobile banner link'};
+    var box = document.createElement('div');
+    box.id = 'jcsLinkNotice';
+    box.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;max-width:480px;max-height:60vh;overflow:auto;background:#fff;color:#111;border:1px solid #ccc;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px 16px;font:13px/1.45 system-ui,sans-serif';
+    var html = '<button type="button" data-close="1" style="float:right;border:0;background:none;font-size:18px;cursor:pointer">&times;</button>' +
+      '<b>' + plan.length + ' link(s) still go to the Canada English site.</b> Nothing has been changed.<ul style="margin:8px 0 0 18px;padding:0">';
+    plan.forEach(function(x, n){
+      html += '<li style="margin-bottom:8px">Banner ' + (x.i + 1) + ' · ' + (labels[x.k] || x.k) + '<br><span style="color:#666;word-break:break-all">' + esc(x.from) + '</span><br>' +
+        (x.exists
+          ? 'The ' + siteName + ' page exists: <span style="word-break:break-all">' + esc(x.to) + '</span> <button type="button" data-use="' + n + '" style="margin-top:4px;padding:4px 10px;border:1px solid #1d4ed8;border-radius:6px;background:#1d4ed8;color:#fff;font:600 12px system-ui;cursor:pointer">Use this link</button>'
+          : '<span style="color:#b30f16;font-weight:600">No ' + siteName + ' page: change it by hand.</span>') + '</li>';
+    });
+    box.innerHTML = html + '</ul>';
+    document.body.appendChild(box);
+    box.addEventListener('click', function(e){
+      var t = e.target;
+      if(t.getAttribute('data-close')){ box.remove(); return; }
+      var n = t.getAttribute('data-use');
+      if(n !== null){
+        var x = plan[+n];
+        slides[x.i][x.k] = x.to;
+        t.outerHTML = '<span style="color:#15803d;font-weight:600">Switched. Click Save to keep it.</span>';
+        loadFields(); renderAll(); markDirty();
+      }
+    });
+  }
+  if(DATA.language === 'fr' || DATA.language === 'us'){
+    checkOnlyLinks(slides, DATA.language).then(function(plan){ showLinkReport(DATA.language, plan); }).catch(function(){});
+  }
+
   function fetchSite(lang){
     if(lang === (DATA.language || 'en')) return Promise.resolve(JSON.parse(JSON.stringify(slides)));
     return fetch(siteRestUrl(lang), {credentials:'same-origin', headers:{'X-WP-Nonce': DATA.nonce}})
