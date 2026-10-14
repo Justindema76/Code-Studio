@@ -2,7 +2,7 @@ name: Deploy standalone Code Studio
 
 on:
   push:
-    branches: [standalone-supabase, main]
+    branches: [standalone-supabase, main, standalone-redesign]
     paths:
       - 'standalone/**'
       - '.github/workflows/deploy-standalone.yml'
