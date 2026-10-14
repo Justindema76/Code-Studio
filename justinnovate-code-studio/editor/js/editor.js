@@ -1501,8 +1501,34 @@ googleFontsLink() + '\n' +
     if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); doSave(); }
   });
 
+  // ---------- keep the same banner, side tab and Desktop/Mobile when switching EN · FR · USA ----------
+  var viewParams = new URLSearchParams(location.search);
+  var startSlide = parseInt(viewParams.get('jcs_slide'), 10);
+  if(!isNaN(startSlide) && startSlide >= 0 && startSlide < slides.length) active = startSlide;
+  [DATA.englishUrl, DATA.frenchUrl, DATA.usaUrl].forEach(function(url){
+    if(!url) return;
+    [].slice.call(document.querySelectorAll('.jcs-topbar-actions a[href]')).forEach(function(a){
+      if(a.getAttribute('href') !== url) return;
+      a.addEventListener('click', function(e){
+        e.preventDefault();
+        var target = new URL(url, location.href);
+        var tab = document.querySelector('.jcs-tab.active');
+        target.searchParams.set('jcs_slide', String(active));
+        if(tab && tab.dataset.tab) target.searchParams.set('jcs_tab', tab.dataset.tab);
+        target.searchParams.set('jcs_mode', mode);
+        location.href = target.toString();
+      });
+    });
+  });
+
   // ---------- init ----------
   el('jcsStatus').textContent = dirty ? 'Unsaved changes' : 'All changes saved';
   loadFields();
   renderAll();
+  (function(){
+    var tab = viewParams.get('jcs_tab');
+    var tabBtn = tab ? document.querySelector('.jcs-tab[data-tab="' + tab.replace(/[^a-z]/g, '') + '"]') : null;
+    if(tabBtn) tabBtn.click();
+    if(viewParams.get('jcs_mode') === 'mobile' && el('jcsMobileMode')) el('jcsMobileMode').click();
+  })();
 })();

@@ -1,3 +1,6 @@
+## 0.3.42
+- Switching EN / FR / USA keeps the banner you are on, the same side tab and Desktop/Mobile (no more jumping back to Banner 1).
+
 ## 0.3.41
 - French and USA no longer come over with empty fields. Any field that is empty in French or USA is filled from English (when you save English and when you open French or USA). French or USA text you have already written is never overwritten.
 - Opening the French or USA version switches wheelsauto.com /ca-en/ links to /ca-fr/ or /us/, but only when that page really exists on that site (WordPress checks it). Links with no page there stay as they are and are listed so you can fix them by hand. Click Save to keep the switched links.
