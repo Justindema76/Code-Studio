@@ -1,3 +1,6 @@
+## 0.3.46
+- Canvas shows the real sizes from wheelsauto.com: "Hero (893)" for the homepage slider and "Full-width row (1290)" for full-width rows. The canvas remembers the width you pick for each banner.
+
 ## 0.3.45
 - The link pop-up is back in French / USA, but it never changes links on its own: it lists links that still go to /ca-en/, shows the French / USA page when one exists with a "Use this link" button, and says "change it by hand" when there is none.
 

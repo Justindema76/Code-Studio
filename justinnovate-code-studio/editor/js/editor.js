@@ -55,9 +55,10 @@
               '<div class="jcs-segmented"><button id="jcsDesktopMode" class="active">Desktop</button><button id="jcsMobileMode">Mobile</button></div>' +
             '</div>' +
             '<div class="jcs-width-row" id="jcsWidthRow">' +
-              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">920px</span>' +
-              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="920">' +
-              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap">Hero 70% (920)</button>' +
+              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">893px</span>' +
+              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="1" value="893">' +
+              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap" title="Homepage hero slider: 893 x 490 on wheelsauto.com">Hero (893)</button>' +
+              '<button type="button" class="jcs-btn secondary panel" id="jcsFullWidth" style="margin-left:6px;white-space:nowrap" title="Full-width homepage row: 1290 px wide on wheelsauto.com">Full-width row (1290)</button>' +
             '</div>' +
             '<div class="jcs-stage" id="jcsStage">' +
               '<div class="jcs-canvas-scale-wrap" id="jcsScaleWrap">' +
@@ -308,7 +309,7 @@
           '<div class="jcs-preview-head">' +
             '<div><h2 id="jcsPreviewTitle">Actual output preview</h2><p>This renders the exact exported HTML/CSS at the selected viewport width.</p></div>' +
             '<div class="jcs-preview-actions">' +
-              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="920">Hero 70% 920</button><button data-preview-width="1440">Desktop 1440</button></div>' +
+              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="893">Hero 893</button><button data-preview-width="1290">Full-width 1290</button><button data-preview-width="1440">Desktop 1440</button></div>' +
               '<button class="jcs-btn secondary" id="jcsPreviewRefresh" type="button">Refresh</button>' +
               '<button class="jcs-modal-close" id="jcsClosePreview" type="button" aria-label="Close">&times;</button>' +
             '</div>' +
@@ -932,7 +933,18 @@
   el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
   el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
-  el('jcsHeroWidth').onclick = function(){ el('jcsPreviewWidth').value = 920; el('jcsPreviewWidthVal').textContent = '920px'; renderCanvas(); };
+  // Real sizes on wheelsauto.com, and the canvas remembers the width you pick for each banner.
+  var PREVIEW_KEY = 'jcsPreviewWidth:' + (DATA.postId || 'new');
+  function setCanvasWidth(w){
+    w = Math.max(600, Math.min(3000, Math.round(Number(w) || 893)));
+    el('jcsPreviewWidth').value = w; el('jcsPreviewWidthVal').textContent = w + 'px';
+    try { localStorage.setItem(PREVIEW_KEY, String(w)); } catch(e) {}
+    renderCanvas();
+  }
+  el('jcsHeroWidth').onclick = function(){ setCanvasWidth(893); };
+  el('jcsFullWidth').onclick = function(){ setCanvasWidth(1290); };
+  el('jcsPreviewWidth').addEventListener('change', function(){ try { localStorage.setItem(PREVIEW_KEY, String(this.value)); } catch(e) {} });
+  (function(){ var saved = null; try { saved = localStorage.getItem(PREVIEW_KEY); } catch(e) {} if(saved){ el('jcsPreviewWidth').value = saved; el('jcsPreviewWidthVal').textContent = saved + 'px'; } })();
 
   document.querySelectorAll('.jcs-tab').forEach(function(t){
     t.addEventListener('click', function(){
@@ -1232,7 +1244,7 @@ googleFontsLink() + '\n' +
       try{ livePreviewWindow.focus(); }catch(e){}
     }else{
       // Popup blocked: fall back to the embedded exact-size preview.
-      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:920); updateActualPreview();
+      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:Number(el('jcsPreviewWidth').value)||893); updateActualPreview();
     }
   };
   el('jcsClosePreview').onclick=function(){ el('jcsPreviewModal').hidden=true; };
