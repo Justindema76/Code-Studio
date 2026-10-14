@@ -442,17 +442,17 @@ googleFontsLink() + '\n' +
       ['Colours',[{d:'eyebrowColor',t:'color',l:'Text colour'},{d:'eyebrowBgEnabled',t:'check',l:'Show background'},{d:'eyebrowBg',t:'color',l:'Background colour'},{d:'eyebrowOpacity',t:'range',l:'Background opacity',min:0,max:100,u:'%'}]],
       ['Box',[{d:'eyebrowPadX',t:'range',l:'Padding left / right',min:0,max:40,u:'px'},{d:'eyebrowPadY',t:'range',l:'Padding top / bottom',min:0,max:24,u:'px'},{d:'eyebrowRadius',t:'range',l:'Corner radius',min:0,max:30,u:'px'}]],
       ['Shadow',[{d:'eyebrowShadowEnabled',t:'check',l:'Add drop shadow'},{d:'eyebrowShadowColor',t:'color',l:'Shadow colour'},{d:'eyebrowShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'eyebrowShadowBlur',t:'range',l:'Blur',min:0,max:60,u:'px'},{d:'eyebrowShadowY',t:'range',l:'Offset',min:0,max:30,u:'px'}]],
-      ['Position',[{d:'eyebrowShiftX',p:'mobileEyebrowShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'eyebrowShiftY',p:'mobileEyebrowShiftY',t:'range',l:'Move up / down',min:-600,max:600,u:'px'},{d:'gapEyebrow',p:'mobileGapEyebrow',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
+      ['Spacing',[{d:'gapEyebrow',p:'mobileGapEyebrow',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
     ]},
     heading:{name:'Heading', hint:'The big title', groups:[
       ['Text',[{d:'heading',t:'area',l:'Heading'}]],
       ['Font',[{d:'headingFont',t:'font',l:'Font'},{d:'headingWeight',t:'weight',l:'Weight'},{d:'headingColor',t:'color',l:'Colour'},{d:'headingSize',p:'mobileHeadingSize',t:'range',l:'Size',min:8,max:220,u:'px'},{d:'headingLineHeight',t:'range',l:'Line height',min:.7,max:2.4,step:.05},{d:'headingLetterSpacing',p:'mobileHeadingLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
-      ['Position',[{d:'headingShiftX',p:'mobileHeadingShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'headingShiftY',p:'mobileHeadingShiftY',t:'range',l:'Move up / down',min:-600,max:600,u:'px'},{d:'gapHeading',p:'mobileGapHeading',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
+      ['Spacing',[{d:'gapHeading',p:'mobileGapHeading',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
     ]},
     sub:{name:'Small text', hint:'The line(s) under the heading', groups:[
       ['Text',[{d:'subheading',t:'area',l:'Small text'}]],
       ['Font',[{d:'bodyFont',t:'font',l:'Font'},{d:'bodyWeight',t:'weight',l:'Weight'},{d:'subColor',t:'color',l:'Colour'},{d:'subSize',p:'mobileSubSize',t:'range',l:'Size',min:8,max:140,u:'px'},{d:'subLineHeight',t:'range',l:'Line height',min:.7,max:2.8,step:.05},{d:'subLetterSpacing',p:'mobileSubLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
-      ['Position',[{d:'subShiftX',p:'mobileSubShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'subShiftY',p:'mobileSubShiftY',t:'range',l:'Move up / down',min:-600,max:600,u:'px'},{d:'gapSub',p:'mobileGapSub',t:'range',l:'Space below',min:0,max:60,u:'px'}]]
+      ['Spacing',[{d:'gapSub',p:'mobileGapSub',t:'range',l:'Space below',min:0,max:60,u:'px'}]]
     ]},
     button:{name:'Button', hint:'The button', groups:[
       ['Text & link',[{d:'buttonText',t:'text',l:'Button text'},{d:'buttonUrl',t:'url',l:'Link'},{d:'buttonNewTab',t:'check',l:'Open in a new tab'}]],
@@ -460,12 +460,11 @@ googleFontsLink() + '\n' +
       ['Colours',[{d:'buttonColor',t:'color',l:'Text colour'},{d:'buttonBgEnabled',t:'check',l:'Show background'},{d:'buttonBg',t:'color',l:'Background colour'},{d:'buttonOpacity',t:'range',l:'Background opacity',min:0,max:100,u:'%'}]],
       ['Shape',[{d:'buttonPadX',t:'range',l:'Padding left / right',min:0,max:60,u:'px'},{d:'buttonHeight',t:'range',l:'Height',min:28,max:80,u:'px'},{d:'buttonRadius',t:'range',l:'Corner radius',min:0,max:40,u:'px'},{d:'buttonWidth',p:'mobileButtonWidth',t:'range',l:'Width (0 = fit text)',min:0,max:1000,step:10,u:'px'}]],
       ['Hover',[{d:'buttonHoverEnabled',t:'check',l:'Change colour on hover'},{d:'buttonHoverBg',t:'color',l:'Hover background'},{d:'buttonHoverColor',t:'color',l:'Hover text'}]],
-      ['Shadow',[{d:'buttonShadowEnabled',t:'check',l:'Add drop shadow'},{d:'buttonShadowColor',t:'color',l:'Shadow colour'},{d:'buttonShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'buttonShadowBlur',t:'range',l:'Blur',min:0,max:60,u:'px'},{d:'buttonShadowY',t:'range',l:'Offset',min:0,max:30,u:'px'}]],
-      ['Position',[{d:'buttonShiftX',p:'mobileButtonShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'buttonShiftY',p:'mobileButtonShiftY',t:'range',l:'Move up / down',min:-600,max:600,u:'px'}]]
+      ['Shadow',[{d:'buttonShadowEnabled',t:'check',l:'Add drop shadow'},{d:'buttonShadowColor',t:'color',l:'Shadow colour'},{d:'buttonShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'buttonShadowBlur',t:'range',l:'Blur',min:0,max:60,u:'px'},{d:'buttonShadowY',t:'range',l:'Offset',min:0,max:30,u:'px'}]]
     ]},
     content:{name:'Text box', hint:'Label, heading, small text and button together', groups:[
       ['Phone shortcut',[{t:'phonePlace'}]],
-      ['Placement',[{d:'contentSide',p:'mobileContentSide',t:'seg',o:LR,l:'Box position'},{d:'contentAlign',p:'mobileContentAlign',t:'seg',o:TB,l:'Vertical'},{d:'textAlign',p:'mobileTextAlign',t:'seg',o:LR,l:'Text alignment'},{d:'contentWidth',p:'mobileContentWidth',t:'range',l:'Box width',min:120,max:1900,step:10,u:'px'},{d:'contentPadding',p:'mobileContentPadding',t:'range',l:'Space from edge',min:0,max:140,step:2,u:'px'},{d:'contentShiftX',p:'mobileContentShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'contentShiftY',p:'mobileContentShiftY',t:'range',l:'Move up / down',min:-1000,max:1000,u:'px'},{d:'showContent',p:'mobileShowContent',t:'check',l:'Show text'}]],
+      ['Placement',[{t:'lineup'},{d:'contentSide',p:'mobileContentSide',t:'seg',o:LR,l:'Box position'},{d:'contentAlign',p:'mobileContentAlign',t:'seg',o:TB,l:'Vertical'},{d:'textAlign',p:'mobileTextAlign',t:'seg',o:LR,l:'Text alignment'},{d:'contentWidth',p:'mobileContentWidth',t:'range',l:'Box width',min:120,max:1900,step:10,u:'px'},{d:'contentPadding',p:'mobileContentPadding',t:'range',l:'Space from edge',min:0,max:140,step:2,u:'px'},{d:'contentShiftX',p:'mobileContentShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'contentShiftY',p:'mobileContentShiftY',t:'range',l:'Move up / down',min:-1000,max:1000,u:'px'},{d:'showContent',p:'mobileShowContent',t:'check',l:'Show text'}]],
       ['Background panel',[{d:'contentBgEnabled',p:'mobileContentBgEnabled',t:'check',l:'Panel behind the text'},{d:'contentBgColor',p:'mobileContentBgColor',t:'color',l:'Colour'},{d:'contentBgOpacity',p:'mobileContentBgOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'contentBgPadding',p:'mobileContentBgPadding',t:'range',l:'Padding',min:0,max:80,step:2,u:'px'},{d:'contentBgRadius',p:'mobileContentBgRadius',t:'range',l:'Corner radius',min:0,max:40,u:'px'}]],
       ['Panel shadow',[{d:'contentBgShadowEnabled',p:'mobileContentBgShadowEnabled',t:'check',l:'Drop shadow'},{d:'contentBgShadowColor',p:'mobileContentBgShadowColor',t:'color',l:'Shadow colour'},{d:'contentBgShadowOpacity',p:'mobileContentBgShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'contentBgShadowBlur',p:'mobileContentBgShadowBlur',t:'range',l:'Blur',min:0,max:80,step:2,u:'px'},{d:'contentBgShadowY',p:'mobileContentBgShadowY',t:'range',l:'Offset',min:0,max:40,u:'px'}]]
     ]},
@@ -533,7 +532,7 @@ googleFontsLink() + '\n' +
 
   // ---------- previews: real embed code, one slide, at real sizes ----------
   var FRAME_CSS = '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}' +
-    '.cs-piece{cursor:grab}.cs-piece:hover{outline:1px dashed #8aa4ff;outline-offset:2px}.cs-sel{outline:2px solid #2f5bea!important;outline-offset:2px}' +
+    '.cs-piece{cursor:pointer}.csx-content{cursor:move}.cs-piece:hover{outline:1px dashed #8aa4ff;outline-offset:2px}.cs-sel{outline:2px solid #2f5bea!important;outline-offset:2px}' +
     'body.cs-dragging,body.cs-dragging *{cursor:grabbing!important}</style>';
   function singleSlideCode(){
     var all = slides, idx = active;
@@ -560,32 +559,65 @@ googleFontsLink() + '\n' +
     PIECE_SEL.forEach(function(p){ doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-piece'); if(panel==='piece' && sel===p[1]) n.classList.add('cs-sel'); }); });
     // never follow links inside the editor preview
     doc.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('a')) e.preventDefault(); }, true);
-    var drag = null;
+    var drag = null, SNAP = 8;
+    function guide(root, vertical, pos, on){
+      var g = doc.createElement('div');
+      g.className = 'cs-guide';
+      g.style.cssText = 'position:absolute;z-index:20;pointer-events:none;' + (vertical ? 'top:0;bottom:0;width:0;left:'+pos+'px;border-left:1px '+(on?'solid #ff2d87':'dashed rgba(255,255,255,.55)') : 'left:0;right:0;height:0;top:'+pos+'px;border-top:1px '+(on?'solid #ff2d87':'dashed rgba(255,255,255,.55)')) + ';box-shadow:0 0 0 .5px rgba(0,0,0,.35)';
+      root.appendChild(g);
+    }
+    function clearGuides(){ doc.querySelectorAll('.cs-guide').forEach(function(g){ g.remove(); }); }
     doc.addEventListener('mousedown', function(e){
       if(e.button !== 0) return;
+      var root = e.target.closest && e.target.closest('.csx-banner-root');
+      if(!root || e.target.closest('.jcsx-nav')) return;
       var p = pieceOf(e.target);
-      if(!p){ if(e.target.closest && e.target.closest('.csx-banner-root') && !e.target.closest('.jcsx-nav')){ e.preventDefault(); select('bg'); } return; }
       e.preventDefault();
-      var base = p.key + 'Shift', xk = base+'X', yk = base+'Y';
-      if(phone){ xk = 'mobile'+xk.charAt(0).toUpperCase()+xk.slice(1); yk = 'mobile'+yk.charAt(0).toUpperCase()+yk.slice(1); }
-      drag = { x:e.clientX, y:e.clientY, ox:Number(cur()[xk])||0, oy:Number(cur()[yk])||0, xk:xk, yk:yk, node:p.node, moved:false, key:p.key };
-      if(sel !== p.key || panel !== 'piece') select(p.key, true);
+      if(!p){ select('bg'); return; }
+      var box = doc.querySelector('.csx-content');
+      var xk = phone ? 'mobileContentShiftX' : 'contentShiftX', yk = phone ? 'mobileContentShiftY' : 'contentShiftY';
+      var rr = root.getBoundingClientRect(), cr = box.getBoundingClientRect();
+      var pad = Number(phone ? (cur().mobileContentPadding != null ? cur().mobileContentPadding : cur().contentPadding) : cur().contentPadding) || 0;
+      drag = { x:e.clientX, y:e.clientY, ox:Number(cur()[xk])||0, oy:Number(cur()[yk])||0, xk:xk, yk:yk, box:box, root:root, key:p.key, moved:false,
+        rr:rr, cr:cr, pad:pad,
+        // the whole box must stay inside the banner
+        minX: rr.left - cr.left, maxX: rr.right - cr.right, minY: rr.top - cr.top, maxY: rr.bottom - cr.bottom };
     });
     doc.addEventListener('mousemove', function(e){
       if(!drag) return;
       var dx = Math.round(e.clientX - drag.x), dy = Math.round(e.clientY - drag.y);
-      if(!drag.moved && Math.abs(dx)+Math.abs(dy) < 3) return;
-      drag.moved = true; doc.body.classList.add('cs-dragging');
+      if(!drag.moved && Math.abs(dx)+Math.abs(dy) < 4) return;
+      if(!drag.moved){ drag.moved = true; doc.body.classList.add('cs-dragging'); if(sel !== 'content' || panel !== 'piece') select('content', true); }
+      var rr = drag.rr, cr = drag.cr;
+      dx = Math.max(drag.minX, Math.min(drag.maxX, dx));
+      dy = Math.max(drag.minY, Math.min(drag.maxY, dy));
+      // snap targets: banner centre (crosshair) and the side margins
+      var cx = cr.left + cr.width/2 + dx, cy = cr.top + cr.height/2 + dy;
+      var rcx = rr.left + rr.width/2, rcy = rr.top + rr.height/2;
+      var snapV = null, snapH = false;
+      if(Math.abs(cx - rcx) < SNAP){ dx = rcx - (cr.left + cr.width/2); snapV = 'center'; }
+      else if(Math.abs(cr.left + dx - (rr.left + drag.pad)) < SNAP){ dx = rr.left + drag.pad - cr.left; snapV = 'left'; }
+      else if(Math.abs(cr.right + dx - (rr.right - drag.pad)) < SNAP){ dx = rr.right - drag.pad - cr.right; snapV = 'right'; }
+      if(Math.abs(cy - rcy) < SNAP){ dy = rcy - (cr.top + cr.height/2); snapH = true; }
+      dx = Math.round(dx); dy = Math.round(dy);
       var nx = drag.ox + dx, ny = drag.oy + dy;
       cur()[drag.xk] = nx; cur()[drag.yk] = ny;
-      if(phone){ drag.node.style.setProperty('--jcs-m-shiftx', nx+'px'); drag.node.style.setProperty('--jcs-m-shifty', ny+'px'); }
-      else { drag.node.style.transform = 'translate('+nx+'px,'+ny+'px)'; }
+      if(phone){ drag.box.style.setProperty('--jcs-m-shiftx', nx+'px'); drag.box.style.setProperty('--jcs-m-shifty', ny+'px'); }
+      else drag.box.style.transform = 'translate('+nx+'px,'+ny+'px)';
+      clearGuides();
+      guide(drag.root, true, rr.width/2, snapV === 'center');
+      guide(drag.root, false, rr.height/2, snapH);
+      if(snapV === 'left') guide(drag.root, true, drag.pad, true);
+      if(snapV === 'right') guide(drag.root, true, rr.width - drag.pad, true);
     });
-    doc.addEventListener('mouseup', function(){
+    function endDrag(){
       if(!drag) return;
-      var moved = drag.moved; drag = null; doc.body.classList.remove('cs-dragging');
-      if(moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); }
-    });
+      var d = drag; drag = null; doc.body.classList.remove('cs-dragging'); clearGuides();
+      if(d.moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); }
+      else select(d.key);   // a click (no drag) opens that piece's controls
+    }
+    doc.addEventListener('mouseup', endDrag);
+    doc.addEventListener('mouseleave', endDrag);
   }
   function scalePreviews(){
     var s0 = slides[0], bs = bannerSettings();
@@ -656,6 +688,12 @@ googleFontsLink() + '\n' +
         '<div class="cs-f"><label>Phone picture</label><input type="url" data-k="mobileImage" value="'+esc(s.mobileImage)+'" placeholder="https://…">'+uploadBtn('mobileImage')+((s.mobileImage||s.desktopImage)?'<div class="cs-thumb cs-tall" style="background-image:url(\''+esc(s.mobileImage||s.desktopImage)+'\')"></div>':'')+'</div>';
     }
     if(c.t === 'gradient') return gradientUI();
+    if(c.t === 'lineup'){
+      var nd = nudged(s, false), np = nudged(s, true);
+      if(!nd && !np) return '';
+      return '<div class="cs-warn"><b>Some pieces are nudged out of line'+(nd&&np?' on desktop and phone':(nd?' on desktop':' on phone'))+'.</b> Pieces can no longer be moved one by one, only the whole text box.' +
+        '<div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">'+(nd?'<button class="cs-mini" data-lineup="d">Line it all up (desktop)</button>':'')+(np?'<button class="cs-mini" data-lineup="p">Line it all up (phone)</button>':'')+'</div></div>';
+    }
     var v = s[c.d];
     if(c.p){
       var lk = isLinked(c);
@@ -683,6 +721,11 @@ googleFontsLink() + '\n' +
       return '<div class="cs-f"><label>'+esc(c.l)+'</label><select data-k="'+c.d+'">' + o.map(function(x){ return '<option value="'+esc(x[0])+'"'+(String(v)===String(x[0])?' selected':'')+(c.t==='font'?' style="font-family:\''+esc(x[0])+'\',sans-serif"':'')+'>'+esc(x[1])+'</option>'; }).join('') + '</select></div>';
     }
     return '';
+  }
+  var PIECE_NAMES = ['Eyebrow','Heading','Sub','Button'];
+  function nudged(s, phone){
+    return PIECE_NAMES.some(function(n){ var k = n.charAt(0).toLowerCase()+n.slice(1)+'Shift';
+      return phone ? (Number(s['mobile'+n+'ShiftX'])||Number(s['mobile'+n+'ShiftY'])) : (Number(s[k+'X'])||Number(s[k+'Y'])); });
   }
   function curGrad(){
     var s = cur(), key = gDev==='d' ? 'gradient' : 'mobileGradient';
@@ -798,6 +841,11 @@ googleFontsLink() + '\n' +
       } else { s.mobileContentAlign = 'center'; toast('Phone: text on the picture'); }
       markDirty(); renderSide(); renderPreviews(); renderCode(); return;
     }
+    var lu = t.closest('[data-lineup]');
+    if(lu){ var sx = cur(), ph = lu.getAttribute('data-lineup') === 'p';
+      PIECE_NAMES.forEach(function(n){ var k = n.charAt(0).toLowerCase()+n.slice(1)+'Shift';
+        if(ph){ sx['mobile'+n+'ShiftX'] = 0; sx['mobile'+n+'ShiftY'] = 0; } else { sx[k+'X'] = 0; sx[k+'Y'] = 0; } });
+      markDirty(); renderSide(); renderPreviews(); renderCode(); toast('Lined up on '+(ph?'phone':'desktop')+'. Drag the text box to place it.'); return; }
     var gd = t.closest('[data-gdev] button'); if(gd){ gDev = gd.getAttribute('data-v'); renderSide(); return; }
     if(t.closest('[data-stadd]')){ curGrad().stops.push({pos:100, color:'#000000', opacity:0}); markDirty(); renderSide(); renderPreviews(); renderCode(); return; }
     var rm = t.closest('[data-strm]'); if(rm){ var g = curGrad(); if(g.stops.length > 2){ g.stops.splice(Number(rm.getAttribute('data-strm')), 1); markDirty(); renderSide(); renderPreviews(); renderCode(); } else toast('A gradient needs at least 2 stops'); return; }
