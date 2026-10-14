@@ -471,7 +471,7 @@ googleFontsLink() + '\n' +
     ]},
     bg:{name:'Background', hint:'Pictures, links, colour, overlay and gradient', groups:[
       ['Pictures',[{t:'imgs'},{d:'altText',t:'text',l:'Picture description (alt text)'}]],
-      ['Picture position',[{d:'desktopFit',t:'select',o:[['width','100% width (designed banners)'],['cover','Fill / crop'],['contain','Fit whole picture'],['custom','Custom width %']],l:'Desktop sizing'},{d:'desktopX',t:'range',l:'Desktop: left / right',min:0,max:100,u:'%'},{d:'desktopY',t:'range',l:'Desktop: up / down',min:0,max:100,u:'%'},{d:'desktopZoom',t:'range',l:'Desktop: zoom (Custom width)',min:50,max:200,u:'%'},{d:'mobileX',t:'range',l:'Phone: left / right',min:-20,max:120,u:'%'},{d:'mobileY',t:'range',l:'Phone: up / down',min:-20,max:120,u:'%'},{d:'mobileWidth',t:'range',l:'Phone: picture width',min:30,max:200,u:'%'},{d:'desktopAttachment',t:'select',o:[['scroll','Scroll (normal)'],['fixed','Fixed (parallax)']],l:'Scrolling'}]],
+      ['Picture position',[{d:'desktopFit',t:'select',o:[['width','100% width (designed banners)'],['cover','Fill / crop'],['contain','Fit whole picture'],['custom','Custom width %']],l:'Desktop sizing'},{d:'desktopX',t:'range',l:'Desktop: left / right',min:-100,max:200,u:'%'},{d:'desktopY',t:'range',l:'Desktop: up / down',min:-100,max:200,u:'%'},{d:'desktopZoom',t:'range',l:'Desktop: size (Custom width)',min:10,max:400,u:'%'},{d:'mobileX',t:'range',l:'Phone: left / right',min:-100,max:200,u:'%'},{d:'mobileY',t:'range',l:'Phone: up / down',min:-100,max:200,u:'%'},{d:'mobileWidth',t:'range',l:'Phone: picture size',min:10,max:400,u:'%'},{d:'desktopAttachment',t:'select',o:[['scroll','Scroll (normal)'],['fixed','Fixed (parallax)']],l:'Scrolling'}]],
       ['Click anywhere on the banner',[{d:'desktopBgLink',p:'mobileBgLink',t:'urlpair',l:'Banner link'},{d:'desktopBgNewTab',p:'mobileBgNewTab',t:'check',l:'Open in a new tab'}]],
       ['Colour & overlay',[{d:'bgColor',t:'color',l:'Base colour (behind the picture)'},{d:'overlayType',t:'select',o:[['none','Off'],['color','Colour'],['image','Image']],l:'Overlay'},{d:'overlayColor',t:'color',l:'Overlay colour'},{d:'overlayImage',t:'img',l:'Overlay image'},{d:'overlayOpacity',t:'range',l:'Overlay opacity',min:0,max:100,u:'%'},{d:'overlayBlendMode',t:'select',o:BLENDS.map(function(b){return [b,b];}),l:'Blend mode'}]],
       ['Gradient (shading behind the text)',[{t:'gradient'}]]
@@ -534,7 +534,7 @@ googleFontsLink() + '\n' +
 
   // ---------- previews: real embed code, one slide, at real sizes ----------
   var FRAME_CSS = '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}' +
-    '.cs-piece{cursor:pointer}.csx-content{cursor:move}.cs-piece:hover{outline:1px dashed #8aa4ff;outline-offset:2px}.cs-sel{outline:2px solid #2f5bea!important;outline-offset:2px}' +
+    '.cs-piece{cursor:pointer}.csx-content{cursor:move}.csx-bg,.csx-scrim{cursor:move}.cs-piece:hover{outline:1px dashed #8aa4ff;outline-offset:2px}.cs-sel{outline:2px solid #2f5bea!important;outline-offset:2px}' +
     'body.cs-dragging,body.cs-dragging *{cursor:grabbing!important}</style>';
   function singleSlideCode(){
     var all = slides, idx = active;
@@ -568,6 +568,64 @@ googleFontsLink() + '\n' +
     r.width = r.right - r.left; r.height = r.bottom - r.top;
     return r;
   }
+  // ---------- picture on the canvas: where it sits and how big it is ----------
+  var IMG_SIZE = {};
+  function natSize(url){
+    if(!url) return null;
+    if(IMG_SIZE[url]) return IMG_SIZE[url];
+    if(IMG_SIZE[url] === undefined){
+      IMG_SIZE[url] = false;
+      var im = new Image();
+      im.onload = function(){ IMG_SIZE[url] = { w:im.naturalWidth, h:im.naturalHeight }; ['csDFrame','csPFrame'].forEach(function(id){ var d = el(id).contentDocument; if(d && d.querySelector('.csx-banner-root')) markSel(d); }); };
+      im.src = url;
+    }
+    return null;
+  }
+  function imgGeom(s, phone, W, H){
+    var url = phone ? (s.mobileImage || s.desktopImage) : s.desktopImage, nat = natSize(url);
+    if(!nat || !nat.w || !nat.h) return null;
+    var w, X, Y;
+    if(phone){ w = W * (Number(s.mobileWidth)||100) / 100; X = s.mobileX; Y = s.mobileY; }
+    else {
+      var fit = s.desktopFit;
+      if(fit === 'width') w = W;
+      else if(fit === 'contain') w = Math.min(W/nat.w, H/nat.h) * nat.w;
+      else if(fit === 'custom') w = W * (Number(s.desktopZoom)||100) / 100;
+      else w = Math.max(W/nat.w, H/nat.h) * nat.w;
+      X = s.desktopX; Y = s.desktopY;
+    }
+    var h = w * nat.h / nat.w;
+    X = Number(X)||0; Y = Number(Y)||0;
+    return { W:W, H:H, w:w, h:h, ratio:nat.h/nat.w, left:(W-w)*X/100, top:(H-h)*Y/100, X:X, Y:Y };
+  }
+  // turn a picture box (left/top/width) back into Code Studio's position % and size %
+  function imgValues(g, phone, resized){
+    var X = Math.abs(g.W - g.w) > .5 ? g.left / (g.W - g.w) * 100 : g.X;
+    var Y = Math.abs(g.H - g.h) > .5 ? g.top / (g.H - g.h) * 100 : g.Y;
+    var v = { X:Math.round(Math.max(-500, Math.min(600, X))), Y:Math.round(Math.max(-500, Math.min(600, Y))) };
+    if(resized) v.size = Math.max(5, Math.round(g.w / g.W * 100));
+    return v;
+  }
+  function saveImg(s, phone, v){
+    if(phone){ s.mobileX = v.X; s.mobileY = v.Y; if(v.size != null) s.mobileWidth = v.size; }
+    else { s.desktopX = v.X; s.desktopY = v.Y; if(v.size != null){ s.desktopFit = 'custom'; s.desktopZoom = v.size; } }
+  }
+  function showImg(node, phone, v){
+    if(phone){ node.style.setProperty('--jcs-mobile-bg-pos', v.X+'% '+v.Y+'%'); if(v.size != null) node.style.setProperty('--jcs-mobile-bg-size', v.size+'% auto'); }
+    else { node.style.backgroundPosition = v.X+'% '+v.Y+'%'; if(v.size != null) node.style.backgroundSize = v.size+'% auto'; }
+  }
+  function drawImgFrame(doc, root, g){
+    var b = doc.createElement('div');
+    b.className = 'cs-selbox';
+    b.style.cssText = 'position:absolute;z-index:19;pointer-events:none;outline:2px solid #2f5bea;left:'+g.left+'px;top:'+g.top+'px;width:'+g.w+'px;height:'+g.h+'px';
+    [['tl','0','0','nwse'],['tr','100%','0','nesw'],['bl','0','100%','nesw'],['br','100%','100%','nwse']].forEach(function(c){
+      var h = doc.createElement('div');
+      h.setAttribute('data-corner', c[0]);
+      h.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:#fff;border:2px solid #2f5bea;border-radius:2px;pointer-events:auto;cursor:'+c[3]+'-resize;left:'+c[1]+';top:'+c[2];
+      b.appendChild(h);
+    });
+    root.appendChild(b);
+  }
   function markSel(doc){
     doc.querySelectorAll('.cs-sel').forEach(function(n){ n.classList.remove('cs-sel'); });
     doc.querySelectorAll('.cs-selbox').forEach(function(n){ n.remove(); });
@@ -580,10 +638,17 @@ googleFontsLink() + '\n' +
       root.appendChild(b);
       return;
     }
+    if(sel === 'bg'){
+      var rootB = doc.querySelector('.csx-banner-root'); if(!rootB) return;
+      var gB = imgGeom(cur(), !!doc.__phone, rootB.clientWidth, rootB.clientHeight);
+      if(gB) drawImgFrame(doc, rootB, gB);
+      return;
+    }
     PIECE_SEL.forEach(function(p){ if(p[1] === sel) doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-sel'); }); });
   }
   function wireFrame(frame, phone){
     var doc = frame.contentDocument;
+    doc.__phone = phone;
     PIECE_SEL.forEach(function(p){ if(p[1] !== 'content') doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-piece'); }); });
     markSel(doc);
     // never follow links inside the editor preview
@@ -602,7 +667,16 @@ googleFontsLink() + '\n' +
       if(!root || e.target.closest('.jcsx-nav')) return;
       var p = pieceOf(e.target);
       e.preventDefault();
-      if(!p){ select('bg'); return; }
+      if(!p){
+        // the picture: drag to move, drag a corner to resize
+        var bgNode = root.querySelector('.csx-bg');
+        if(sel !== 'bg' || panel !== 'piece') select('bg', true);
+        var g0 = imgGeom(cur(), phone, root.clientWidth, root.clientHeight);
+        if(!g0 || !bgNode) return;
+        var corner = e.target.getAttribute && e.target.getAttribute('data-corner');
+        drag = { img:true, corner:corner, x:e.clientX, y:e.clientY, g0:g0, node:bgNode, root:root, moved:false, rr:root.getBoundingClientRect() };
+        return;
+      }
       var box = doc.querySelector('.csx-content');
       var xk = phone ? 'mobileContentShiftX' : 'contentShiftX', yk = phone ? 'mobileContentShiftY' : 'contentShiftY';
       var rr = root.getBoundingClientRect(), cr = textRect(doc);
@@ -614,6 +688,7 @@ googleFontsLink() + '\n' +
     });
     doc.addEventListener('mousemove', function(e){
       if(!drag) return;
+      if(drag.img){ moveImg(e); return; }
       var dx = Math.round(e.clientX - drag.x), dy = Math.round(e.clientY - drag.y);
       if(!drag.moved && Math.abs(dx)+Math.abs(dy) < 4) return;
       if(!drag.moved){ drag.moved = true; doc.body.classList.add('cs-dragging'); if(sel !== 'content' || panel !== 'piece') select('content', true); }
@@ -640,9 +715,63 @@ googleFontsLink() + '\n' +
       if(snapV === 'left') guide(drag.root, true, drag.pad, true);
       if(snapV === 'right') guide(drag.root, true, rr.width - drag.pad, true);
     });
+    function moveImg(e){
+      var d = drag, g0 = d.g0, dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if(!d.moved && Math.abs(dx)+Math.abs(dy) < 3) return;
+      d.moved = true; doc.body.classList.add('cs-dragging');
+      var g = { W:g0.W, H:g0.H, ratio:g0.ratio, X:g0.X, Y:g0.Y, w:g0.w, h:g0.h, left:g0.left, top:g0.top };
+      var snapV = null, snapH = null;
+      if(d.corner){
+        // resize, keeping the opposite corner where it is
+        var right = d.corner.charAt(1) === 'r', bottom = d.corner.charAt(0) === 'b';
+        g.w = Math.max(40, g0.w + (right ? dx : -dx)); g.h = g.w * g.ratio;
+        g.left = right ? g0.left : g0.left + g0.w - g.w;
+        g.top = bottom ? g0.top : g0.top + g0.h - g.h;
+        // snap the moving edge to the banner edges
+        if(right && Math.abs(g.left + g.w - g.W) < SNAP){ g.w = g.W - g.left; g.h = g.w * g.ratio; if(!bottom) g.top = g0.top + g0.h - g.h; snapV = 'right'; }
+        if(!right && Math.abs(g.left) < SNAP){ g.w = g0.left + g0.w; g.h = g.w * g.ratio; g.left = 0; if(!bottom) g.top = g0.top + g0.h - g.h; snapV = 'left'; }
+      } else {
+        g.left = g0.left + dx; g.top = g0.top + dy;
+        // crosshair: snap the picture's centre to the banner's centre, and its edges to the banner's edges
+        if(Math.abs(g.left + g.w/2 - g.W/2) < SNAP){ g.left = g.W/2 - g.w/2; snapV = 'center'; }
+        else if(Math.abs(g.left) < SNAP){ g.left = 0; snapV = 'left'; }
+        else if(Math.abs(g.left + g.w - g.W) < SNAP){ g.left = g.W - g.w; snapV = 'right'; }
+        if(Math.abs(g.top + g.h/2 - g.H/2) < SNAP){ g.top = g.H/2 - g.h/2; snapH = 'center'; }
+        else if(Math.abs(g.top) < SNAP){ g.top = 0; snapH = 'top'; }
+        else if(Math.abs(g.top + g.h - g.H) < SNAP){ g.top = g.H - g.h; snapH = 'bottom'; }
+      }
+      var v = imgValues(g, phone, !!d.corner);
+      d.last = v;
+      showImg(d.node, phone, v);
+      markSel(doc);
+      clearGuides();
+      guide(d.root, true, g.W/2, snapV === 'center');
+      guide(d.root, false, g.H/2, snapH === 'center');
+      if(snapV === 'left') guide(d.root, true, 1, true);
+      if(snapV === 'right') guide(d.root, true, g.W - 1, true);
+      if(snapH === 'top') guide(d.root, false, 1, true);
+      if(snapH === 'bottom') guide(d.root, false, g.H - 1, true);
+    }
+    // mouse wheel over the picture = zoom it, keeping its centre in place
+    var wheelTimer = null;
+    doc.addEventListener('wheel', function(e){
+      var root = e.target.closest && e.target.closest('.csx-banner-root');
+      if(!root || pieceOf(e.target) || sel !== 'bg' || panel !== 'piece') return;
+      var g0 = imgGeom(cur(), phone, root.clientWidth, root.clientHeight), node = root.querySelector('.csx-bg');
+      if(!g0 || !node) return;
+      e.preventDefault();
+      var f = e.deltaY < 0 ? 1.05 : 1/1.05, cx = g0.left + g0.w/2, cy = g0.top + g0.h/2;
+      var g = { W:g0.W, H:g0.H, ratio:g0.ratio, X:g0.X, Y:g0.Y, w:Math.max(40, g0.w * f) };
+      g.h = g.w * g.ratio; g.left = cx - g.w/2; g.top = cy - g.h/2;
+      var v = imgValues(g, phone, true);
+      saveImg(cur(), phone, v); showImg(node, phone, v); markSel(doc); markDirty();
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(function(){ renderSide(); renderPreviews(); renderCode(); }, 350);
+    }, { passive:false });
     function endDrag(){
       if(!drag) return;
       var d = drag; drag = null; doc.body.classList.remove('cs-dragging'); clearGuides();
+      if(d.img){ if(d.moved && d.last){ saveImg(cur(), phone, d.last); markDirty(); renderSide(); renderPreviews(); renderCode(); } return; }
       if(d.moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); }
       else select(d.key);   // a click (no drag) opens that piece's controls
     }
