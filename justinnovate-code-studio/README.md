@@ -1,3 +1,7 @@
+## 0.3.48
+- Live preview: links open in a new tab, so the preview stays on your banners.
+- Live preview shows the banner at its real size (canvas width, or 390 for Mobile), centred, with a bar saying exactly what you are previewing: banner name, language, Desktop/Mobile, size and "Banner X of N".
+
 ## 0.3.47
 - Rolled back to how Code Studio worked in 0.3.40 (before "Copy code for all 3 sites", the link check, and French/USA following English). Same code as 0.3.40; new version number only so browsers load it fresh.
 

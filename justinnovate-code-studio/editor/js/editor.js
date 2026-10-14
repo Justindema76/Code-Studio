@@ -1155,14 +1155,33 @@ googleFontsLink() + '\n' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>Justinnovate Live Preview</title>' +
       '<style>html,body{margin:0!important;padding:0!important;background:#111!important;overflow:hidden!important;min-height:0!important}body{font-family:Inter,Arial,sans-serif}body>.csx-banner-root{margin:0!important}</style>' + forceCss +
-      '</head><body>' + generateCode() + '</body></html>';
+      '</head><body>' + generateCode() +
+      '<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");if(!a)return;var h=a.getAttribute("href");if(!h||h.charAt(0)==="#")return;e.preventDefault();window.open(a.href,"_blank","noopener");},true);<\/script>' +
+      '</body></html>';
+  }
+
+  // Live preview window: the banner at its real size, centred, with a bar that says
+  // exactly what you are looking at. Links open in a new tab so you never lose the preview.
+  function livePreviewShell(){
+    var isMobile = mode === 'mobile';
+    var w = isMobile ? 390 : (Number(el('jcsPreviewWidth').value) || 920);
+    var h = isMobile ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
+    var name = esc(el('jcsTitle').value || 'Banner'), lang = esc(DATA.languageLabel || 'English');
+    var info = '<b>Live preview</b> · ' + name + ' · ' + lang + ' · ' + (isMobile ? 'Mobile' : 'Desktop') + ' · ' + w + ' × ' + h + 'px · <span id="pvSlide">Banner 1 of ' + slides.length + '</span> · links open in a new tab';
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Live preview · ' + name + ' · ' + lang + '</title>' +
+      '<style>html,body{margin:0;background:#e9e9e9;font:13px/1.4 system-ui,sans-serif;color:#222}.pvbar{position:sticky;top:0;z-index:2;background:#141414;color:#ddd;padding:9px 16px}.pvbar b{color:#fff}.pvwrap{padding:24px 16px;display:flex;justify-content:center}.pvwrap iframe{border:0;display:block;max-width:none;background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.18)}</style>' +
+      '</head><body><div class="pvbar">' + info + '</div><div class="pvwrap"><iframe id="pv" title="Banner preview" style="width:' + w + 'px;height:' + h + 'px"></iframe></div>' +
+      '<script>setInterval(function(){try{var d=document.getElementById("pv").contentDocument;var s=[].slice.call(d.querySelectorAll(".csx-slide"));var i=s.findIndex(function(x){return x.classList.contains("is-active")});if(s.length)document.getElementById("pvSlide").textContent="Banner "+(i+1)+" of "+s.length;}catch(e){}},300);<\/script>' +
+      '</body></html>';
   }
 
   function writeLivePreviewWindow(){
     if(!livePreviewWindow || livePreviewWindow.closed) return;
     try{
       var d=livePreviewWindow.document;
-      d.open(); d.write(previewDocument()); d.close();
+      var h = mode === 'mobile' ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
+      d.open(); d.write(livePreviewShell()); d.close();
+      d.getElementById('pv').srcdoc = previewDocument(h);
     }catch(e){}
   }
 
@@ -1222,9 +1241,9 @@ googleFontsLink() + '\n' +
   }
 
   el('jcsLivePreview').onclick=function(){
-    var previewW = mode==='mobile' ? 390 : Math.max(900, Math.round(window.innerWidth));
+    var previewW = mode==='mobile' ? 480 : Math.min(screen.availWidth || 1920, (Number(el('jcsPreviewWidth').value) || 920) + 80);
     var previewH = mode==='mobile' ? Number(slides[0].mobileHeight||620) : Number(slides[0].desktopHeight||490);
-    livePreviewWindow = window.open('', 'jcs-live-preview', 'width='+previewW+',height='+(previewH+90)+',resizable=yes,scrollbars=no');
+    livePreviewWindow = window.open('', 'jcs-live-preview', 'width='+previewW+',height='+(previewH+140)+',resizable=yes,scrollbars=yes');
     if(livePreviewWindow){
       writeLivePreviewWindow();
       try{ livePreviewWindow.focus(); }catch(e){}
