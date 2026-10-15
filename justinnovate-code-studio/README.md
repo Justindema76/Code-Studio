@@ -1,3 +1,6 @@
+## 0.3.52
+- Editor always opens showing Desktop and Phone (Both).
+
 ## 0.3.51
 - Editor sections start closed; "Gradient" renamed (under Background).
 
