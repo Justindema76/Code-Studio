@@ -53,3 +53,4 @@
 - Standalone is now **published** at https://justindema76.github.io/Code-Studio/ from branch `standalone-redesign` (GitHub Pages Source = GitHub Actions; every push to that branch updates the site). `main` / WordPress plugin untouched.
 - Existing banners move over one at a time: old Code Studio → Copy project JSON (or embed code) → standalone → More → Load code / project → Save (repeat on FR / USA tabs).
 - **Tomorrow: talk about the Adobe Commerce extension** (getting the name out there).
+- **10:10 — bring the standalone redesign into the WordPress Code Studio** (`justinnovate-code-studio/`). Build it on its own branch (e.g. `wp-redesign`), NOT `main` — pushing to `main` deploys straight to wp.justindematteis.com, which Wheels uses. Merge only after Justin approves. Keep WordPress saving, FR/USA, and the embed code exactly as today. Then talk about making it a public WordPress plugin + the Adobe Commerce extension.
