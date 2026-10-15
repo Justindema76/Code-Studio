@@ -1,3 +1,6 @@
+## 0.3.50
+- Drag the text box edges to change its width; drag its corners to make all the text bigger or smaller.
+
 ## 0.3.49
 - New editor (same as the standalone): click any piece of the banner to edit it; every control kept, grouped by piece (Red label, Heading, Small text, Button, Text box, Background) plus Slider settings.
 - Desktop and Phone previews side by side (Show: Desktop / Phone / Both), built from the exact embed code. Desktop Hero 893 or Full width 1290; Phone 345.
