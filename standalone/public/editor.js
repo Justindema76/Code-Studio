@@ -513,7 +513,7 @@ googleFontsLink() + '\n' +
             '<div class="cs-pv" id="csDesk"><div class="cs-pvh"><b>Desktop</b><div class="cs-seg cs-w" id="csDeskW"><button data-w="893">Hero 893</button><button data-w="1290">Full width 1290</button></div><span id="csDLbl"></span></div><div class="cs-box" id="csDBox"><iframe id="csDFrame" title="Desktop preview"></iframe></div></div>' +
             '<div class="cs-pv cs-phone" id="csPhone"><div class="cs-pvh"><b>Phone</b><span id="csPLbl"></span></div><div class="cs-box" id="csPBox"><iframe id="csPFrame" title="Phone preview"></iframe></div></div>' +
           '</div>' +
-          '<div class="cs-hint"><b>Click any piece of the banner to edit it. Drag it to move it.</b> Desktop and Phone are always both on screen, built from the same code you copy into the website.</div>' +
+          '<div class="cs-hint"><b>Click any piece of the banner to edit it. Drag the text box or the picture to move it; drag the blue handles to resize.</b> Desktop and Phone are always both on screen, built from the same code you copy into the website.</div>' +
           '<details class="cs-code"><summary>Embed code</summary><textarea id="csCode" readonly></textarea><button class="cs-tb cs-pri" id="csCopyCode2">Copy embed code</button></details>' +
         '</main>' +
         '<aside class="cs-side" id="csSide"></aside>' +
@@ -635,6 +635,14 @@ googleFontsLink() + '\n' +
       var rr = root.getBoundingClientRect(), b = doc.createElement('div');
       b.className = 'cs-selbox';
       b.style.cssText = 'position:absolute;z-index:19;pointer-events:none;outline:2px solid #2f5bea;outline-offset:4px;left:'+(r.left-rr.left)+'px;top:'+(r.top-rr.top)+'px;width:'+r.width+'px;height:'+r.height+'px';
+      // edges = box width, corners = text size
+      [['l','-4px','50%','ew'],['r','calc(100% + 4px)','50%','ew'],['tl','-4px','-4px','nwse'],['tr','calc(100% + 4px)','-4px','nesw'],['bl','-4px','calc(100% + 4px)','nesw'],['br','calc(100% + 4px)','calc(100% + 4px)','nwse']].forEach(function(c){
+        var h = doc.createElement('div'); h.setAttribute('data-tbox', c[0]);
+        var edge = c[0].length === 1;
+        h.title = edge ? 'Drag to make the text box wider or narrower' : 'Drag to make all the text bigger or smaller';
+        h.style.cssText = 'position:absolute;pointer-events:auto;background:#fff;border:2px solid #2f5bea;cursor:'+c[3]+'-resize;left:'+c[1]+';top:'+c[2]+';'+(edge ? 'width:8px;height:22px;margin:-11px 0 0 -4px;border-radius:4px' : 'width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%');
+        b.appendChild(h);
+      });
       root.appendChild(b);
       return;
     }
@@ -665,6 +673,19 @@ googleFontsLink() + '\n' +
       if(e.button !== 0) return;
       var root = e.target.closest && e.target.closest('.csx-banner-root');
       if(!root || e.target.closest('.jcsx-nav')) return;
+      var tb = e.target.getAttribute && e.target.getAttribute('data-tbox');
+      if(tb){
+        e.preventDefault();
+        var s = cur(), M = function(k){ return phone ? 'mobile'+k.charAt(0).toUpperCase()+k.slice(1) : k; };
+        var sizeKeys = ['eyebrowSize','headingSize','subSize','buttonFontSize','gapEyebrow','gapHeading','gapSub'].map(M);
+        var start = {}; sizeKeys.forEach(function(k){ start[k] = Number(s[k]) || 0; });
+        var tr0 = textRect(doc);
+        drag = { tbox:tb, x:e.clientX, y:e.clientY, moved:false, root:root,
+          wk:M('contentWidth'), w0:Number(s[M('contentWidth')]) || 480,
+          side:(phone ? (s.mobileContentSide != null ? s.mobileContentSide : s.contentSide) : s.contentSide),
+          sizeKeys:sizeKeys, start:start, tw0:tr0 ? tr0.width : 300, box:doc.querySelector('.csx-content') };
+        return;
+      }
       var p = pieceOf(e.target);
       e.preventDefault();
       // empty space inside the text box (it can be much bigger than the visible text) belongs to the picture
@@ -694,6 +715,7 @@ googleFontsLink() + '\n' +
     doc.addEventListener('mousemove', function(e){
       if(!drag) return;
       if(drag.img){ moveImg(e); return; }
+      if(drag.tbox){ resizeText(e); return; }
       var dx = Math.round(e.clientX - drag.x), dy = Math.round(e.clientY - drag.y);
       if(!drag.moved && Math.abs(dx)+Math.abs(dy) < 4) return;
       if(!drag.moved){ drag.moved = true; doc.body.classList.add('cs-dragging'); if(sel !== 'content' || panel !== 'piece') select('content', true); }
@@ -720,6 +742,30 @@ googleFontsLink() + '\n' +
       if(snapV === 'left') guide(drag.root, true, drag.pad, true);
       if(snapV === 'right') guide(drag.root, true, rr.width - drag.pad, true);
     });
+    function resizeText(e){
+      var d = drag, s = cur(), dx = e.clientX - d.x;
+      if(!d.moved && Math.abs(dx) < 3) return;
+      d.moved = true; doc.body.classList.add('cs-dragging');
+      var right = d.tbox.indexOf('r') >= 0, signed = right ? dx : -dx;
+      if(d.tbox === 'l' || d.tbox === 'r'){
+        // box width (a centred box grows on both sides)
+        var w = Math.round(Math.max(120, Math.min(1900, d.w0 + signed * (d.side === 'center' ? 2 : 1))));
+        s[d.wk] = w;
+        if(phone) d.box.style.setProperty('--jcs-m-width', w+'px'); else d.box.style.width = 'min('+w+'px,98%)';
+      } else {
+        // all text bigger / smaller together
+        var f = Math.max(.3, Math.min(4, (d.tw0 + signed) / d.tw0));
+        d.sizeKeys.forEach(function(k){ s[k] = Math.max(k.indexOf('ap') > 0 ? 0 : 6, Math.round(d.start[k] * f)); });
+        var map = { '.csx-eyebrow':['eyebrowSize','gapEyebrow'], '.csx-heading':['headingSize','gapHeading'], '.csx-sub':['subSize','gapSub'], '.csx-button':['buttonFontSize',null] };
+        Object.keys(map).forEach(function(q){ var n = doc.querySelector(q); if(!n) return;
+          var sk = phone ? 'mobile'+map[q][0].charAt(0).toUpperCase()+map[q][0].slice(1) : map[q][0];
+          var gk = map[q][1] && (phone ? 'mobile'+map[q][1].charAt(0).toUpperCase()+map[q][1].slice(1) : map[q][1]);
+          if(phone){ n.style.setProperty('--jcs-m-size', s[sk]+'px'); if(gk) n.style.setProperty('--jcs-m-gap', s[gk]+'px'); }
+          else { n.style.fontSize = s[sk]+'px'; if(gk) n.style.marginBottom = s[gk]+'px'; }
+        });
+      }
+      markSel(doc);
+    }
     function moveImg(e){
       var d = drag, g0 = d.g0, dx = e.clientX - d.x, dy = e.clientY - d.y;
       if(!d.moved && Math.abs(dx)+Math.abs(dy) < 3) return;
@@ -778,6 +824,7 @@ googleFontsLink() + '\n' +
     function endDrag(){
       if(!drag) return;
       var d = drag; drag = null; doc.body.classList.remove('cs-dragging'); clearGuides();
+      if(d.tbox){ if(d.moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); } return; }
       if(d.img){ if(d.moved && d.last){ saveImg(cur(), phone, d.last); markDirty(); renderSide(); renderPreviews(); renderCode(); } return; }
       if(d.moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); }
       else select(d.key);   // a click (no drag) opens that piece's controls
