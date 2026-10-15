@@ -1,5 +1,5 @@
-## 0.3.52
-- Editor always opens showing Desktop and Phone (Both).
+## 0.3.53
+- The Desktop / Phone / Both view you pick stays when you switch EN / FR / USA (undoes 0.3.52).
 
 ## 0.3.51
 - Editor sections start closed; "Gradient" renamed (under Background).

@@ -442,7 +442,7 @@ googleFontsLink() + '\n' +
   var root = document.getElementById('jcs-root');
   var PW = 345;                 // real phone banner width on wheelsauto.com
   var deskW = 893;              // homepage hero slot; can switch to full width
-  var view = 'both';   // always opens showing Desktop and Phone
+  var view = 'both'; try { view = localStorage.getItem('cs-view') || 'both'; } catch(e){}
   var sel = 'content', panel = 'piece', links = {}, openGroups = {}, gDev = 'd';
   var FONTS = fontLibrary();
   var WEIGHTS = [['300','300 Light'],['400','400 Regular'],['500','500 Medium'],['600','600 Semi-bold'],['700','700 Bold'],['800','800 Extra-bold'],['900','900 Black']];
@@ -1132,7 +1132,7 @@ googleFontsLink() + '\n' +
     slides.push(n); active = slides.length-1; links = {}; markDirty(); select('heading'); renderCode();
   };
   el('csSliderBtn').onclick = function(){ panel = panel === 'slider' ? 'piece' : 'slider'; renderRail(); renderSide(); renderPreviews(); };
-  el('csView').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; view = b.getAttribute('data-v'); renderPreviews(); });
+  el('csView').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; view = b.getAttribute('data-v'); try { localStorage.setItem('cs-view', view); } catch(err){} renderPreviews(); });
   el('csDeskW').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; deskW = Number(b.getAttribute('data-w')); renderPreviews(); });
 
   // ---------- top bar ----------
