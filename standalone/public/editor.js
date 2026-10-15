@@ -474,7 +474,7 @@ googleFontsLink() + '\n' +
       ['Picture position',[{d:'desktopFit',t:'select',o:[['width','100% width (designed banners)'],['cover','Fill / crop'],['contain','Fit whole picture'],['custom','Custom width %']],l:'Desktop sizing'},{d:'desktopX',t:'range',l:'Desktop: left / right',min:-100,max:200,u:'%'},{d:'desktopY',t:'range',l:'Desktop: up / down',min:-100,max:200,u:'%'},{d:'desktopZoom',t:'range',l:'Desktop: size (Custom width)',min:10,max:400,u:'%'},{d:'mobileX',t:'range',l:'Phone: left / right',min:-100,max:200,u:'%'},{d:'mobileY',t:'range',l:'Phone: up / down',min:-100,max:200,u:'%'},{d:'mobileWidth',t:'range',l:'Phone: picture size',min:10,max:400,u:'%'},{d:'desktopAttachment',t:'select',o:[['scroll','Scroll (normal)'],['fixed','Fixed (parallax)']],l:'Scrolling'}]],
       ['Click anywhere on the banner',[{d:'desktopBgLink',p:'mobileBgLink',t:'urlpair',l:'Banner link'},{d:'desktopBgNewTab',p:'mobileBgNewTab',t:'check',l:'Open in a new tab'}]],
       ['Colour & overlay',[{d:'bgColor',t:'color',l:'Base colour (behind the picture)'},{d:'overlayType',t:'select',o:[['none','Off'],['color','Colour'],['image','Image']],l:'Overlay'},{d:'overlayColor',t:'color',l:'Overlay colour'},{d:'overlayImage',t:'img',l:'Overlay image'},{d:'overlayOpacity',t:'range',l:'Overlay opacity',min:0,max:100,u:'%'},{d:'overlayBlendMode',t:'select',o:BLENDS.map(function(b){return [b,b];}),l:'Blend mode'}]],
-      ['Gradient (shading behind the text)',[{t:'gradient'}]]
+      ['Gradient',[{t:'gradient'}]]
     ]}
   };
   var SLIDER = [
@@ -973,13 +973,13 @@ googleFontsLink() + '\n' +
     var side = el('csSide'), h;
     if(panel === 'slider'){
       h = '<div class="cs-who"><div class="cs-row1"><div><h2>Slider settings</h2><div class="cs-sub">Applies to every slide in this slider</div></div></div></div>';
-      SLIDER.forEach(function(gp, i){ var id='slider'+i, o = openGroups[id] !== undefined ? openGroups[id] : true;
+      SLIDER.forEach(function(gp, i){ var id='slider'+i, o = openGroups[id] !== undefined ? openGroups[id] : false;
         h += '<details class="cs-grp" data-grp="'+id+'"'+(o?' open':'')+'><summary>'+gp[0]+'</summary><div class="cs-gb">'+gp[1].map(ctl).join('')+'</div></details>'; });
     } else {
       var P = PIECES[sel];
       h = '<div class="cs-who"><div class="cs-row1"><div><h2>'+P.name+'</h2><div class="cs-sub">Slide '+(active+1)+' · '+P.hint+'</div></div>'+(slides.length>1?'<button class="cs-all" id="csApplyAll" title="Copy this look (not text or links) to every slide">Apply to all slides</button>':'')+'</div>' +
         '<div class="cs-chips">' + Object.keys(PIECES).map(function(k){ return '<button data-pick="'+k+'" class="'+(k===sel?'on':'')+'">'+PIECES[k].name+'</button>'; }).join('') + '</div></div>';
-      P.groups.forEach(function(gp, i){ var id = sel+i, o = openGroups[id] !== undefined ? openGroups[id] : (i < 3);
+      P.groups.forEach(function(gp, i){ var id = sel+i, o = openGroups[id] !== undefined ? openGroups[id] : false;
         h += '<details class="cs-grp" data-grp="'+id+'"'+(o?' open':'')+'><summary>'+gp[0]+'</summary><div class="cs-gb">'+gp[1].map(ctl).join('')+'</div></details>'; });
     }
     var top = side.scrollTop; side.innerHTML = h; side.scrollTop = top;
