@@ -1,3 +1,6 @@
+## 0.3.51
+- Editor sections start closed; "Gradient" renamed (under Background).
+
 ## 0.3.50
 - Drag the text box edges to change its width; drag its corners to make all the text bigger or smaller.
 
