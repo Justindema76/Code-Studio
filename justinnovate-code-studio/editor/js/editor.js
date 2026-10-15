@@ -1,3 +1,5 @@
+/* Code Studio editor (WordPress) — redesigned UI (same as standalone/public/editor.js) on top of the
+   unchanged banner engine (data model, embed code, import). Saves through the WordPress REST API. */
 (function(){
   var DATA = window.JCS_EDITOR_DATA || {};
   var STUDIO = DATA.settings || {};
@@ -21,315 +23,6 @@
     var families=Object.keys(used).map(function(f){ return 'family='+encodeURIComponent(f)+':wght@400;500;600;700;800;900'; });
     return families.length ? '<link href="https://fonts.googleapis.com/css2?'+families.join('&')+'&display=swap" rel="stylesheet">\n' : '';
   }
-
-  // ---------- build the shell ----------
-  var root = document.getElementById('jcs-root');
-  root.innerHTML =
-    '<div class="jcs">' +
-      '<header class="jcs-topbar">' +
-        '<div class="jcs-topbar-left">' +
-          '<a class="jcs-back" href="'+ (DATA.listUrl||'#') +'" title="Back to list">&#8592;</a>' +
-          '<input class="jcs-title-input" id="jcsTitle" type="text" value="">' +
-          '<span class="jcs-status" id="jcsStatus">Loading…</span>' +
-          '<span class="jcs-language-pill">'+(DATA.languageLabel||'English')+'</span>' +
-        '</div>' +
-        '<div class="jcs-topbar-actions">' +
-          '<a class="jcs-btn secondary'+(DATA.language==='en'?' active':'')+'" href="'+(DATA.englishUrl||'#')+'" style="'+(DATA.language==='en'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">EN</a>' +
-          '<a class="jcs-btn secondary'+(DATA.language==='fr'?' active':'')+'" href="'+(DATA.frenchUrl||'#')+'" style="'+(DATA.language==='fr'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">FR</a>' +
-          '<a class="jcs-btn secondary'+(DATA.language==='us'?' active':'')+'" href="'+(DATA.usaUrl||'#')+'" style="'+(DATA.language==='us'?'background:var(--accent);color:#fff;border-color:var(--accent);':'')+'">USA</a>' +
-          ((DATA.language==='fr') ? '<button class="jcs-btn secondary" id="jcsAutoTranslate">Translate EN → FR</button>' : '') +
-          '<button class="jcs-btn secondary" id="jcsLivePreview">Live preview</button>' +
-          '<button class="jcs-btn secondary" id="jcsNew">New blank</button>' +
-          '<button class="jcs-btn secondary" id="jcsOpenImport">Load code / project</button>' +
-          '<button class="jcs-btn secondary" id="jcsCopyProject">Copy project JSON</button>' +
-          '<button class="jcs-btn secondary" id="jcsCopyTop">Copy embed code</button>' +
-          '<button class="jcs-btn primary" id="jcsSave">Save</button>' +
-        '</div>' +
-      '</header>' +
-      '<div class="jcs-body" id="jcsBody">' +
-        '<main class="jcs-main">' +
-          '<section class="jcs-canvas-card">' +
-            '<div class="jcs-toolbar">' +
-              '<strong>Canvas</strong>' +
-              '<div class="jcs-segmented"><button id="jcsDesktopMode" class="active">Desktop</button><button id="jcsMobileMode">Mobile</button></div>' +
-            '</div>' +
-            '<div class="jcs-width-row" id="jcsWidthRow">' +
-              '<label>Preview at browser width</label><span id="jcsPreviewWidthVal">920px</span>' +
-              '<input id="jcsPreviewWidth" type="range" min="600" max="3000" step="20" value="920">' +
-              '<button type="button" class="jcs-btn secondary panel" id="jcsHeroWidth" style="margin-left:8px;white-space:nowrap">Hero 70% (920)</button>' +
-            '</div>' +
-            '<div class="jcs-stage" id="jcsStage">' +
-              '<div class="jcs-canvas-scale-wrap" id="jcsScaleWrap">' +
-                '<div class="jcs-canvas desktop" id="jcsCanvas">' +
-                  '<div class="jcs-c-picture"><img id="jcsCanvasImg" alt=""></div>' +
-                  '<div class="jcs-c-overlay" id="jcsCanvasOverlay"></div>' +
-                  '<div class="jcs-c-scrim" id="jcsCanvasScrim"></div>' +
-                  '<div class="jcs-c-inner" id="jcsCanvasInner">' +
-                    '<div class="jcs-c-content">' +
-                      '<span class="jcs-c-eyebrow" id="jcsCEyebrow"></span>' +
-                      '<h2 class="jcs-c-heading" id="jcsCHeading"></h2>' +
-                      '<p class="jcs-c-sub" id="jcsCSub"></p>' +
-                      '<span class="jcs-c-btn" id="jcsCBtn"></span>' +
-                    '</div>' +
-                  '</div>' +
-                  '<div class="jcs-c-arrow jcs-c-prev">&#8249;</div>' +
-                  '<div class="jcs-c-arrow jcs-c-next">&#8250;</div>' +
-                  '<div class="jcs-c-dashes" id="jcsCanvasDashes"></div>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            '<p class="jcs-hint">Background images are locked as true backgrounds. Use Background controls to position them.</p>' +
-          '</section>' +
-          '<section class="jcs-canvas-card jcs-code-card">' +
-            '<div class="jcs-toolbar">' +
-              '<strong>Embed code</strong>' +
-              '<button class="jcs-btn primary" id="jcsCopyCode">Copy code</button>' +
-            '</div>' +
-            '<p class="jcs-hint">Paste this into any page — an HTML block, a theme template, another site\'s page builder. It\'s self-contained and doesn\'t need this plugin installed anywhere else.</p>' +
-            '<textarea class="jcs-code-output" id="jcsCodeOutput" readonly></textarea>' +
-          '</section>' +
-        '</main>' +
-        '<aside class="jcs-side">' +
-          '<div class="jcs-side-head"><strong>Banners <span class="jcs-mode-badge" id="jcsModeBadge"></span></strong>' +
-            '<div class="jcs-slide-actions" style="display:flex!important;gap:8px!important;flex:0 0 auto!important"><button class="jcs-btn primary" id="jcsDuplicate" type="button" style="display:inline-flex!important;visibility:visible!important;opacity:1!important;position:relative!important;align-items:center!important">Duplicate slide</button> <button class="jcs-btn primary" id="jcsAdd" type="button">Add</button></div>' +
-          '</div>' +
-          '<div class="jcs-tabs-slides" id="jcsSlideTabs"></div>' +
-          '<div class="jcs-tabbar" id="jcsTabbar">' +
-            '<button class="jcs-tab active" data-tab="content">Content</button>' +
-            '<button class="jcs-tab" data-tab="image">Background</button>' +
-            '<button class="jcs-tab" data-tab="layout">Position</button>' +
-            '<button class="jcs-tab" data-tab="gradient">Effects</button>' +
-            '<button class="jcs-tab" data-tab="style">Typography & Style</button>' +
-            '<button class="jcs-tab" data-tab="settings">Banner</button>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel active" data-panel="content">' +
-            '<label>Eyebrow</label><input id="fEyebrow" type="text">' +
-            '<label>Heading</label><textarea id="fHeading"></textarea>' +
-            '<label>Sub-heading</label><textarea id="fSub"></textarea>' +
-            '<label>Button text</label><input id="fBtnText" type="text">' +
-            '<label>Button URL</label><input id="fBtnUrl" type="url">' +
-            '<div class="jcs-checkbox-row"><input id="fBtnNewTab" type="checkbox"><label for="fBtnNewTab">Open button in new tab</label></div>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel" data-panel="image">' +
-            '<label>Desktop image URL</label><input id="fDeskImg" type="url">' +
-            '<label>Mobile image URL</label><input id="fMobImg" type="url">' +
-            '<div class="jcs-section-label">Background link</div>' +
-            '<label>Desktop background link URL</label><input id="fDeskBgLink" type="url" placeholder="https://...">' +
-            '<div class="jcs-checkbox-row"><input id="fDeskBgNewTab" type="checkbox"><label for="fDeskBgNewTab">Open desktop background link in new tab</label></div>' +
-            '<label>Mobile background link URL</label><input id="fMobBgLink" type="url" placeholder="https://...">' +
-            '<div class="jcs-checkbox-row"><input id="fMobBgNewTab" type="checkbox"><label for="fMobBgNewTab">Open mobile background link in new tab</label></div>' +
-            '<div class="jcs-section-label">Content visibility</div>' +
-            '<div class="jcs-checkbox-row"><input id="fDeskShowContent" type="checkbox"><label for="fDeskShowContent">Show content on desktop</label></div>' +
-            '<div class="jcs-checkbox-row"><input id="fMobShowContent" type="checkbox"><label for="fMobShowContent">Show content on mobile</label></div>' +
-            '<label>Image alt text</label><input id="fAlt" type="text">' +
-            '<label>Desktop background sizing</label><select id="fFit"><option value="width">100% width (recommended for designed banners)</option><option value="cover">Cover / crop</option><option value="contain">Contain</option><option value="custom">Custom width %</option></select>' +
-            '<label>Background attachment</label><select id="fAttachment"><option value="scroll">Scroll (normal)</option><option value="fixed">Fixed (parallax)</option></select>' +
-            '<div class="jcs-section-label">Background colour</div>' +
-            '<label>Base colour</label><input id="fBgColor" type="color">' +
-            '<div class="jcs-section-label">Background overlay</div>' +
-            '<label>Type</label><select id="fOverlayType"><option value="none">Off</option><option value="color">Colour</option><option value="image">Image</option></select>' +
-            '<div id="jcsOverlayColorRow"><label>Overlay colour</label><input id="fOverlayColor" type="color"></div>' +
-            '<div id="jcsOverlayImageRow" style="display:none;"><label>Overlay image URL</label><input id="fOverlayImage" type="url"></div>' +
-            '<div class="jcs-range"><label>Opacity</label><span id="fOverlayOpacityVal"></span><input id="fOverlayOpacity" type="range" min="0" max="100" step="1"></div>' +
-            '<label>Blend mode</label><select id="fOverlayBlend">' +
-              '<option value="normal">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option>' +
-              '<option value="color-dodge">Color Dodge</option><option value="color-burn">Color Burn</option><option value="hard-light">Hard Light</option><option value="soft-light">Soft Light</option>' +
-              '<option value="difference">Difference</option><option value="exclusion">Exclusion</option><option value="hue">Hue</option><option value="saturation">Saturation</option><option value="color">Color</option><option value="luminosity">Luminosity</option>' +
-            '</select>' +
-            '<div class="jcs-section-label">Desktop position</div>' +
-            '<div class="jcs-range"><label>Horizontal</label><span id="fDeskXVal"></span><input id="fDeskX" type="range" min="0" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Vertical</label><span id="fDeskYVal"></span><input id="fDeskY" type="range" min="0" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Zoom</label><span id="fDeskZoomVal"></span><input id="fDeskZoom" type="range" min="50" max="200" step="1"></div>' +
-            '<div class="jcs-section-label">Mobile position</div>' +
-            '<div class="jcs-range"><label>Horizontal</label><span id="fMobXVal"></span><input id="fMobX" type="range" min="-20" max="120" step="1"></div>' +
-            '<div class="jcs-range"><label>Vertical</label><span id="fMobYVal"></span><input id="fMobY" type="range" min="-20" max="120" step="1"></div>' +
-            '<div class="jcs-range"><label>Width</label><span id="fMobWVal"></span><input id="fMobW" type="range" min="30" max="200" step="1"></div>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel" data-panel="layout">' +
-            '<div class="jcs-mode-toggle" id="jcsLayoutModeBadge">Editing: Desktop layout</div>' +
-            '<button class="jcs-btn secondary" id="jcsCopyLayout" style="width:100%;margin-bottom:14px;">Copy from the other screen size</button>' +
-            '<label>Justify content</label>' +
-            '<div class="jcs-justify-group" id="jcsJustifyGroup">' +
-              '<button type="button" data-value="left">L</button><button type="button" data-value="center">C</button><button type="button" data-value="right">R</button>' +
-            '</div>' +
-            '<div class="jcs-section-label">Content block</div>' +
-            '<label>Vertical alignment</label><select id="fAlignY"><option value="center">Center</option><option value="flex-start">Top</option><option value="flex-end">Bottom</option></select>' +
-            '<div class="jcs-range"><label>Edge padding</label><span id="fPaddingXVal"></span><input id="fPaddingX" type="range" min="16" max="140" step="2"></div>' +
-            '<div class="jcs-range"><label>Shift horizontal</label><span id="fShiftXVal"></span><input id="fShiftX" type="range" min="-1000" max="1000" step="5"><input id="fShiftXNumber" type="number" min="-1000" max="1000" step="1" style="margin-top:6px;width:100%;" aria-label="Exact horizontal shift in pixels"></div>' +
-            '<div class="jcs-range"><label>Shift vertical</label><span id="fShiftYVal"></span><input id="fShiftY" type="range" min="-1000" max="1000" step="5"><input id="fShiftYNumber" type="number" min="-1000" max="1000" step="1" style="margin-top:6px;width:100%;" aria-label="Exact vertical shift in pixels"></div>' +
-            '<div class="jcs-section-label">Content background</div>' +
-            '<div class="jcs-checkbox-row"><input id="fContentBgEnabled" type="checkbox"><label for="fContentBgEnabled">Show background panel</label></div>' +
-            '<div id="jcsContentBgDetail">' +
-              '<label>Colour</label><input id="fContentBgColor" type="color">' +
-              '<div class="jcs-range"><label>Opacity</label><span id="fContentBgOpacityVal"></span><input id="fContentBgOpacity" type="range" min="0" max="100" step="1"></div>' +
-              '<div class="jcs-range"><label>Padding</label><span id="fContentBgPaddingVal"></span><input id="fContentBgPadding" type="range" min="0" max="80" step="2"></div>' +
-              '<div class="jcs-range"><label>Corner radius</label><span id="fContentBgRadiusVal"></span><input id="fContentBgRadius" type="range" min="0" max="40" step="1"></div>' +
-              '<div class="jcs-checkbox-row"><input id="fContentBgShadowEnabled" type="checkbox"><label for="fContentBgShadowEnabled">Add drop shadow</label></div>' +
-              '<div id="jcsContentBgShadowDetail">' +
-                '<label>Shadow colour</label><input id="fContentBgShadowColor" type="color">' +
-                '<div class="jcs-range"><label>Shadow opacity</label><span id="fContentBgShadowOpacityVal"></span><input id="fContentBgShadowOpacity" type="range" min="0" max="100" step="1"></div>' +
-                '<div class="jcs-range"><label>Shadow blur</label><span id="fContentBgShadowBlurVal"></span><input id="fContentBgShadowBlur" type="range" min="0" max="80" step="2"></div>' +
-                '<div class="jcs-range"><label>Shadow offset</label><span id="fContentBgShadowYVal"></span><input id="fContentBgShadowY" type="range" min="0" max="40" step="1"></div>' +
-              '</div>' +
-            '</div>' +
-            '<div class="jcs-section-label">Spacing</div>' +
-            '<div class="jcs-range"><label>Eyebrow &rarr; Heading</label><span id="fGapEyebrowVal"></span><input id="fGapEyebrow" type="range" min="0" max="50" step="1"></div>' +
-            '<div class="jcs-range"><label>Heading &rarr; Sub</label><span id="fGapHeadingVal"></span><input id="fGapHeading" type="range" min="0" max="50" step="1"></div>' +
-            '<div class="jcs-range"><label>Sub &rarr; Button</label><span id="fGapSubVal"></span><input id="fGapSub" type="range" min="0" max="60" step="1"></div>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel" data-panel="gradient">' +
-            '<div class="jcs-mode-toggle" id="jcsGradientModeBadge">Editing: Desktop gradient</div>' +
-            '<label>Type</label><select id="fGradType"><option value="off">Off</option><option value="linear">Linear</option><option value="radial">Radial</option></select>' +
-            '<button class="jcs-btn secondary" id="jcsCopyGradient" style="width:100%;margin-top:10px;">Copy from the other screen size</button>' +
-            '<div id="jcsGradientEditor">' +
-              '<div class="jcs-section-label">Stops</div>' +
-              '<div class="jcs-gradient-bar-wrap"><div class="jcs-gradient-bar" id="jcsGradBar"></div></div>' +
-              '<div class="jcs-stop-editor" id="jcsStopEditor"></div>' +
-              '<div class="jcs-section-label" id="jcsAngleLabel">Angle</div>' +
-              '<div class="jcs-angle-row" id="jcsAngleRow"><div class="jcs-dial" id="jcsDial"><div class="jcs-dial-handle" id="jcsDialHandle"></div></div><input id="fAngle" type="number" min="0" max="360" step="1"></div>' +
-              '<div class="jcs-section-label" id="jcsRadialLabel" style="display:none;">Radial center</div>' +
-              '<div id="jcsRadialRow" style="display:none;">' +
-                '<div class="jcs-range"><label>Horizontal</label><span id="fRadXVal"></span><input id="fRadX" type="range" min="0" max="100" step="1"></div>' +
-                '<div class="jcs-range"><label>Vertical</label><span id="fRadYVal"></span><input id="fRadY" type="range" min="0" max="100" step="1"></div>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel" data-panel="style">' +
-            '<div class="jcs-section-label">Colours</div>' +
-            '<div class="jcs-color-grid">' +
-              '<div><label>Heading</label><input id="fHeadingColor" type="color"></div>' +
-              '<div><label>Sub-heading</label><input id="fSubColor" type="color"></div>' +
-              '<div><label>Eyebrow bg</label><input id="fEyebrowBg" type="color"></div>' +
-              '<div><label>Eyebrow text</label><input id="fEyebrowColor" type="color"></div>' +
-              '<div><label>Button bg</label><input id="fBtnBg" type="color"></div>' +
-              '<div><label>Button text</label><input id="fBtnColor" type="color"></div>' +
-            '</div>' +
-            '<div class="jcs-section-label">Typography</div>' +
-            '<div class="jcs-mode-toggle" id="jcsTypeModeBadge">Editing: Desktop typography</div>' +
-            '<button class="jcs-btn secondary panel" id="jcsCopyTypo" style="width:100%;margin-bottom:10px;">Copy from Mobile typography</button>' +
-            '<label>Heading font</label><select id="fHeadingFont"></select>' +
-            '<label>Sub-heading font</label><select id="fBodyFont"></select>' +
-            '<label>Eyebrow font</label><select id="fEyebrowFont"></select>' +
-            '<label>Button font</label><select id="fButtonFont"></select>' +
-            '<label>Heading weight</label><select id="fHeadingWeight"><option value="300">300 Light</option><option value="400">400 Regular</option><option value="500">500 Medium</option><option value="600">600 Semi-bold</option><option value="700">700 Bold</option><option value="800">800 Extra-bold</option><option value="900">900 Black</option></select>' +
-            '<label>Sub-heading weight</label><select id="fBodyWeight"><option value="300">300 Light</option><option value="400">400 Regular</option><option value="500">500 Medium</option><option value="600">600 Semi-bold</option><option value="700">700 Bold</option><option value="800">800 Extra-bold</option><option value="900">900 Black</option></select>' +
-            '<label>Eyebrow weight</label><select id="fEyebrowWeight"><option value="300">300 Light</option><option value="400">400 Regular</option><option value="500">500 Medium</option><option value="600">600 Semi-bold</option><option value="700">700 Bold</option><option value="800">800 Extra-bold</option><option value="900">900 Black</option></select>' +
-            '<label>Button weight</label><select id="fButtonWeight"><option value="300">300 Light</option><option value="400">400 Regular</option><option value="500">500 Medium</option><option value="600">600 Semi-bold</option><option value="700">700 Bold</option><option value="800">800 Extra-bold</option><option value="900">900 Black</option></select>' +
-            '<div class="jcs-section-label">Text alignment</div>' +
-            '<div class="jcs-justify" id="jcsTextAlignGroup"><button type="button" data-value="left">L</button><button type="button" data-value="center">C</button><button type="button" data-value="right">R</button></div>' +
-            '<div class="jcs-range"><label>Eyebrow size</label><span id="fEyebrowSizeVal"></span><input id="fEyebrowSize" type="range" min="8" max="180" step="1"></div>' +
-            '<div class="jcs-range"><label>Heading size</label><span id="fHeadingSizeVal"></span><input id="fHeadingSize" type="range" min="8" max="220" step="1"></div>' +
-            '<div class="jcs-range"><label>Sub-heading size</label><span id="fSubSizeVal"></span><input id="fSubSize" type="range" min="8" max="140" step="1"></div>' +
-            '<div class="jcs-range"><label>Button text size</label><span id="fButtonFontSizeVal"></span><input id="fButtonFontSize" type="range" min="8" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Text block width</label><span id="fWidthVal"></span><input id="fWidth" type="range" min="120" max="1900" step="10"></div><label>Exact text block width (px)</label><input id="fWidthNumber" type="number" min="120" max="1900" step="10" style="margin-bottom:8px">' +
-            '<div class="jcs-width-presets" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px"><button type="button" class="jcs-btn secondary panel jcs-width-preset" data-width="480">480</button><button type="button" class="jcs-btn secondary panel jcs-width-preset" data-width="800">800</button><button type="button" class="jcs-btn secondary panel jcs-width-preset" data-width="1200">1200</button><button type="button" class="jcs-btn secondary panel jcs-width-preset" data-width="1900">MAX</button></div>' +
-            '<div class="jcs-range"><label>Heading line height</label><span id="fHeadingLineHeightVal"></span><input id="fHeadingLineHeight" type="range" min="0.7" max="2.4" step="0.05"></div>' +
-            '<div class="jcs-range"><label>Sub-heading line height</label><span id="fSubLineHeightVal"></span><input id="fSubLineHeight" type="range" min="0.7" max="2.8" step="0.05"></div>' +
-            '<div class="jcs-section-label">Letter spacing</div>' +
-            '<div class="jcs-range"><label>Eyebrow spacing</label><span id="fEyebrowLetterSpacingVal"></span><input id="fEyebrowLetterSpacing" type="range" min="-5" max="30" step="0.5"></div>' +
-            '<div class="jcs-range"><label>Heading spacing</label><span id="fHeadingLetterSpacingVal"></span><input id="fHeadingLetterSpacing" type="range" min="-5" max="30" step="0.5"></div>' +
-            '<div class="jcs-range"><label>Sub-heading spacing</label><span id="fSubLetterSpacingVal"></span><input id="fSubLetterSpacing" type="range" min="-5" max="30" step="0.5"></div>' +
-            '<div class="jcs-range"><label>Button spacing</label><span id="fButtonLetterSpacingVal"></span><input id="fButtonLetterSpacing" type="range" min="-5" max="30" step="0.5"></div>' +
-            '<div class="jcs-section-label">Fine positioning</div>' +
-            '<div class="jcs-range"><label>Eyebrow horizontal</label><span id="fEyebrowShiftXVal"></span><input id="fEyebrowShiftX" type="range" min="-1000" max="1000" step="1"></div>' +
-            '<div class="jcs-range"><label>Eyebrow vertical</label><span id="fEyebrowShiftYVal"></span><input id="fEyebrowShiftY" type="range" min="-600" max="600" step="1"></div>' +
-            '<div class="jcs-range"><label>Heading horizontal</label><span id="fHeadingShiftXVal"></span><input id="fHeadingShiftX" type="range" min="-1000" max="1000" step="1"></div>' +
-            '<div class="jcs-range"><label>Heading vertical</label><span id="fHeadingShiftYVal"></span><input id="fHeadingShiftY" type="range" min="-600" max="600" step="1"></div>' +
-            '<div class="jcs-range"><label>Sub-heading horizontal</label><span id="fSubShiftXVal"></span><input id="fSubShiftX" type="range" min="-1000" max="1000" step="1"></div>' +
-            '<div class="jcs-range"><label>Sub-heading vertical</label><span id="fSubShiftYVal"></span><input id="fSubShiftY" type="range" min="-600" max="600" step="1"></div>' +
-            '<div class="jcs-range"><label>Button horizontal</label><span id="fButtonShiftXVal"></span><input id="fButtonShiftX" type="range" min="-1000" max="1000" step="1"></div>' +
-            '<div class="jcs-range"><label>Button vertical</label><span id="fButtonShiftYVal"></span><input id="fButtonShiftY" type="range" min="-600" max="600" step="1"></div>' +
-            '<div class="jcs-range"><label>Button width (0 = auto)</label><span id="fButtonWidthVal"></span><input id="fButtonWidth" type="range" min="0" max="1000" step="10"></div>' +
-            '<div class="jcs-section-label">Eyebrow background</div>' +
-            '<div class="jcs-checkbox-row"><input id="fEyebrowBgEnabled" type="checkbox"><label for="fEyebrowBgEnabled">Show eyebrow background</label></div>' +
-            '<div id="jcsEyebrowBgDetail">' +
-            '<div class="jcs-range"><label>Opacity</label><span id="fEyebrowOpacityVal"></span><input id="fEyebrowOpacity" type="range" min="0" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Padding (l/r)</label><span id="fEyebrowPadXVal"></span><input id="fEyebrowPadX" type="range" min="0" max="40" step="1"></div>' +
-            '<div class="jcs-range"><label>Padding (t/b)</label><span id="fEyebrowPadYVal"></span><input id="fEyebrowPadY" type="range" min="0" max="24" step="1"></div>' +
-            '<div class="jcs-range"><label>Corner radius</label><span id="fEyebrowRadiusVal"></span><input id="fEyebrowRadius" type="range" min="0" max="30" step="1"></div>' +
-            '<div class="jcs-checkbox-row"><input id="fEyebrowShadowEnabled" type="checkbox"><label for="fEyebrowShadowEnabled">Add drop shadow</label></div>' +
-            '<div id="jcsEyebrowShadowDetail">' +
-              '<label>Shadow colour</label><input id="fEyebrowShadowColor" type="color">' +
-              '<div class="jcs-range"><label>Opacity</label><span id="fEyebrowShadowOpacityVal"></span><input id="fEyebrowShadowOpacity" type="range" min="0" max="100" step="1"></div>' +
-              '<div class="jcs-range"><label>Blur</label><span id="fEyebrowShadowBlurVal"></span><input id="fEyebrowShadowBlur" type="range" min="0" max="60" step="2"></div>' +
-              '<div class="jcs-range"><label>Offset</label><span id="fEyebrowShadowYVal"></span><input id="fEyebrowShadowY" type="range" min="0" max="30" step="1"></div>' +
-            '</div></div>' +
-            '<div class="jcs-section-label">Button background</div>' +
-            '<div class="jcs-checkbox-row"><input id="fButtonBgEnabled" type="checkbox"><label for="fButtonBgEnabled">Show button background</label></div>' +
-            '<div id="jcsButtonBgDetail">' +
-            '<div class="jcs-range"><label>Opacity</label><span id="fButtonOpacityVal"></span><input id="fButtonOpacity" type="range" min="0" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Padding (l/r)</label><span id="fButtonPadXVal"></span><input id="fButtonPadX" type="range" min="0" max="60" step="1"></div>' +
-            '<div class="jcs-range"><label>Height</label><span id="fButtonHeightVal"></span><input id="fButtonHeight" type="range" min="28" max="80" step="1"></div>' +
-            '<div class="jcs-range"><label>Corner radius</label><span id="fButtonRadiusVal"></span><input id="fButtonRadius" type="range" min="0" max="40" step="1"></div>' +
-            '<div class="jcs-checkbox-row"><input id="fButtonShadowEnabled" type="checkbox"><label for="fButtonShadowEnabled">Add drop shadow</label></div>' +
-            '<div id="jcsButtonShadowDetail">' +
-              '<label>Shadow colour</label><input id="fButtonShadowColor" type="color">' +
-              '<div class="jcs-range"><label>Opacity</label><span id="fButtonShadowOpacityVal"></span><input id="fButtonShadowOpacity" type="range" min="0" max="100" step="1"></div>' +
-              '<div class="jcs-range"><label>Blur</label><span id="fButtonShadowBlurVal"></span><input id="fButtonShadowBlur" type="range" min="0" max="60" step="2"></div>' +
-              '<div class="jcs-range"><label>Offset</label><span id="fButtonShadowYVal"></span><input id="fButtonShadowY" type="range" min="0" max="30" step="1"></div>' +
-            '</div></div>' +
-            '<div class="jcs-section-label">Button hover</div>' +
-            '<div class="jcs-checkbox-row"><input id="fButtonHoverEnabled" type="checkbox"><label for="fButtonHoverEnabled">Enable hover effect</label></div>' +
-            '<div id="jcsButtonHoverDetail"><div class="jcs-color-grid"><div><label>Hover background</label><input id="fButtonHoverBg" type="color"></div><div><label>Hover text</label><input id="fButtonHoverColor" type="color"></div></div></div>' +
-            '<div class="jcs-section-label">Arrows &amp; dashes</div>' +
-            '<div class="jcs-color-grid">' +
-              '<div><label>Arrow background</label><input id="fArrowBg" type="color"></div>' +
-              '<div><label>Arrow icon</label><input id="fArrowIconColor" type="color"></div>' +
-              '<div><label>Arrow border</label><input id="fArrowBorderColor" type="color"></div>' +
-              '<div><label>Dash / progress</label><input id="fDashColor" type="color"></div>' +
-            '</div>' +
-            '<div class="jcs-range"><label>Arrow bg opacity</label><span id="fArrowBgOpacityVal"></span><input id="fArrowBgOpacity" type="range" min="0" max="100" step="1"></div>' +
-            '<div class="jcs-range"><label>Arrow border opacity</label><span id="fArrowBorderOpacityVal"></span><input id="fArrowBorderOpacity" type="range" min="0" max="100" step="1"></div>' +
-          '</div>' +
-
-          '<div class="jcs-tabpanel" data-panel="settings">' +
-            '<label>Desktop height (px)</label><input id="fDeskHeight" type="number" min="200" max="1600" step="1">' +
-            '<label>Mobile height (px)</label><input id="fMobHeight" type="number" min="200" max="1600" step="1">' +
-            '<label>Autoplay speed (ms)</label><input id="fAutoplay" type="number" min="1000" step="100">' +
-            '<div class="jcs-section-label">Banner corners</div>' +
-            '<label>Corner radius, desktop (px)</label><input id="fBannerRadius" type="number" min="0" max="200" step="1">' +
-            '<label>Corner radius, mobile (px) &mdash; blank = same as desktop</label><input id="fMobileBannerRadius" type="number" min="0" max="200" step="1" placeholder="Same as desktop">' +
-            '<div class="jcs-section-label">Layout</div>' +
-            '<label>Switch to mobile layout at (px wide or less)</label><input id="fMobileBreakpoint" type="number" min="320" max="2000" step="1">' +
-            '<div class="jcs-checkbox-row"><input id="fResetHostPadding" type="checkbox"><label for="fResetHostPadding">Remove Magento page padding (full-width pages)</label></div>' +
-            '<div class="jcs-checkbox-row"><input id="fPauseHover" type="checkbox"><label for="fPauseHover">Pause on hover</label></div>' +
-            '<button class="jcs-btn danger" id="jcsRemove" style="width:100%;margin-top:18px;">Remove this banner</button>' +
-          '</div>' +
-        '</aside>' +
-      '</div>' +
-      '<div class="jcs-modal jcs-preview-modal" id="jcsPreviewModal" hidden>' +
-        '<div class="jcs-preview-card" role="dialog" aria-modal="true" aria-labelledby="jcsPreviewTitle">' +
-          '<div class="jcs-preview-head">' +
-            '<div><h2 id="jcsPreviewTitle">Actual output preview</h2><p>This renders the exact exported HTML/CSS at the selected viewport width.</p></div>' +
-            '<div class="jcs-preview-actions">' +
-              '<div class="jcs-preview-devices"><button class="active" data-preview-width="390">Mobile 390</button><button data-preview-width="768">Tablet 768</button><button data-preview-width="920">Hero 70% 920</button><button data-preview-width="1440">Desktop 1440</button></div>' +
-              '<button class="jcs-btn secondary" id="jcsPreviewRefresh" type="button">Refresh</button>' +
-              '<button class="jcs-modal-close" id="jcsClosePreview" type="button" aria-label="Close">&times;</button>' +
-            '</div>' +
-          '</div>' +
-          '<div class="jcs-preview-stage" id="jcsPreviewStage"><div class="jcs-preview-device" id="jcsPreviewDevice" style="width:390px"><iframe id="jcsPreviewFrame" title="Actual banner output preview"></iframe></div></div>' +
-          '<div class="jcs-preview-foot"><strong id="jcsPreviewSizeLabel">390px viewport</strong><span>What you see here is the same generated code you copy into the site.</span></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="jcs-modal" id="jcsImportModal" hidden>' +
-        '<div class="jcs-modal-card" role="dialog" aria-modal="true" aria-labelledby="jcsImportTitle">' +
-          '<div class="jcs-modal-head"><div><h2 id="jcsImportTitle">Load code or project</h2>' +
-          '<p>Paste code exported by this studio or raw project JSON.</p></div>' +
-          '<button class="jcs-modal-close" id="jcsCloseImport" type="button" aria-label="Close">&times;</button></div>' +
-          '<textarea id="jcsImportArea" class="jcs-import-area" placeholder="Paste exported code or project JSON here..."></textarea>' +
-          '<div class="jcs-import-msg" id="jcsImportMsg"></div>' +
-          '<div class="jcs-modal-actions"><button class="jcs-btn secondary dark" id="jcsCancelImport" type="button">Cancel</button>' +
-          '<button class="jcs-btn primary" id="jcsLoadImport" type="button">Load into studio</button></div>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
-  populateFontSelects();
 
   // ---------- data model (mirrors JCS_Render::defaults() in PHP) ----------
   function defaultGradient(){
@@ -481,11 +174,6 @@
     return 'linear-gradient('+g.angle+'deg, '+stopsCss+')';
   }
 
-  function el(id){ return document.getElementById(id); }
-
-  function markDirty(){ dirty = true; el('jcsStatus').textContent = 'Unsaved changes'; }
-
-
   function normalizeStoredText(value){
     var text = value == null ? '' : String(value);
     text = text.replace(/\r\n?/g,'\n');
@@ -495,482 +183,6 @@
     text = text.replace(/([A-Za-z0-9,.;:!?])n&\s*/g,'$1 & ');
     return text;
   }
-
-  // ---------- field bindings ----------
-  var simpleFields = {
-    fEyebrow:'eyebrow', fHeading:'heading', fSub:'subheading', fBtnText:'buttonText', fBtnUrl:'buttonUrl', fDeskBgLink:'desktopBgLink', fMobBgLink:'mobileBgLink',
-    fDeskImg:'desktopImage', fMobImg:'mobileImage', fAlt:'altText', fFit:'desktopFit', fAttachment:'desktopAttachment',
-    fBgColor:'bgColor', fOverlayType:'overlayType', fOverlayColor:'overlayColor', fOverlayImage:'overlayImage', fOverlayBlend:'overlayBlendMode',
-    fHeadingColor:'headingColor', fSubColor:'subColor', fEyebrowBg:'eyebrowBg', fEyebrowColor:'eyebrowColor',
-    fBtnBg:'buttonBg', fBtnColor:'buttonColor', fArrowBg:'arrowBg', fArrowIconColor:'arrowIconColor',
-    fArrowBorderColor:'arrowBorderColor', fDashColor:'dashColor', fEyebrowShadowColor:'eyebrowShadowColor',
-    fButtonShadowColor:'buttonShadowColor', fButtonHoverBg:'buttonHoverBg', fButtonHoverColor:'buttonHoverColor',
-    fHeadingFont:'headingFont', fBodyFont:'bodyFont', fEyebrowFont:'eyebrowFont', fButtonFont:'buttonFont', fHeadingWeight:'headingWeight', fBodyWeight:'bodyWeight', fEyebrowWeight:'eyebrowWeight', fButtonWeight:'buttonWeight', fDeskHeight:'desktopHeight', fMobHeight:'mobileHeight', fAutoplay:'autoplay'
-  };
-  var rangeFields = {
-    fDeskX:'desktopX', fDeskY:'desktopY', fDeskZoom:'desktopZoom', fMobX:'mobileX', fMobY:'mobileY', fMobW:'mobileWidth',
-    fOverlayOpacity:'overlayOpacity', fEyebrowOpacity:'eyebrowOpacity', fEyebrowPadX:'eyebrowPadX', fEyebrowPadY:'eyebrowPadY', fEyebrowRadius:'eyebrowRadius',
-    fButtonOpacity:'buttonOpacity', fButtonPadX:'buttonPadX', fButtonHeight:'buttonHeight', fButtonRadius:'buttonRadius',
-    fArrowBgOpacity:'arrowBgOpacity', fArrowBorderOpacity:'arrowBorderOpacity', fHeadingLineHeight:'headingLineHeight', fSubLineHeight:'subLineHeight',
-    fEyebrowShadowOpacity:'eyebrowShadowOpacity', fEyebrowShadowBlur:'eyebrowShadowBlur', fEyebrowShadowY:'eyebrowShadowY',
-    fButtonShadowOpacity:'buttonShadowOpacity', fButtonShadowBlur:'buttonShadowBlur', fButtonShadowY:'buttonShadowY'
-  };
-  var PX_FIELDS = ['fPaddingX','fShiftX','fShiftY','fGapEyebrow','fGapHeading','fGapSub','fEyebrowPadX','fEyebrowPadY','fEyebrowRadius','fButtonPadX','fButtonHeight','fButtonRadius','fEyebrowShadowBlur','fEyebrowShadowY','fButtonShadowBlur','fButtonShadowY'];
-  var NO_SUFFIX_FIELDS = ['fHeadingLineHeight','fSubLineHeight'];
-  function valSuffix(id, value){ if(NO_SUFFIX_FIELDS.indexOf(id)>=0) return value; return value + (PX_FIELDS.indexOf(id)>=0 ? 'px' : '%'); }
-
-  function loadFields(){
-    var s=cur();
-    Object.keys(simpleFields).forEach(function(id){ var f=el(id); if(!f) return; var key=simpleFields[id]; if(key==='heading'||key==='subheading'||key==='eyebrow'||key==='buttonText') s[key]=normalizeStoredText(s[key]); f.value = s[key]; });
-    Object.keys(rangeFields).forEach(function(id){ var f=el(id); if(!f) return; f.value = s[rangeFields[id]]; var v=el(id+'Val'); if(v) v.textContent=valSuffix(id, f.value); });
-    el('fPauseHover').checked = !!s.pauseHover;
-    var bs = bannerSettings(), b0 = slides[0] || {};
-    el('fBannerRadius').value = bs.radius;
-    el('fMobileBannerRadius').value = (b0.mobileBannerRadius === null || typeof b0.mobileBannerRadius === 'undefined') ? '' : b0.mobileBannerRadius;
-    el('fMobileBreakpoint').value = bs.breakpoint;
-    el('fResetHostPadding').checked = bs.resetHostPadding;
-    el('fBtnNewTab').checked = !!s.buttonNewTab;
-    el('fDeskBgNewTab').checked = !!s.desktopBgNewTab;
-    el('fMobBgNewTab').checked = !!s.mobileBgNewTab;
-    el('fDeskShowContent').checked = s.showContent !== false;
-    el('fMobShowContent').checked = s.mobileShowContent !== false;
-    if (typeof s.eyebrowBgEnabled === 'undefined') s.eyebrowBgEnabled = true;
-    if (typeof s.buttonBgEnabled === 'undefined') s.buttonBgEnabled = true;
-    el('fEyebrowBgEnabled').checked = !!s.eyebrowBgEnabled;
-    el('jcsEyebrowBgDetail').style.display = s.eyebrowBgEnabled ? 'block' : 'none';
-    el('fButtonBgEnabled').checked = !!s.buttonBgEnabled;
-    el('jcsButtonBgDetail').style.display = s.buttonBgEnabled ? 'block' : 'none';
-    el('fEyebrowShadowEnabled').checked = !!s.eyebrowShadowEnabled;
-    el('jcsEyebrowShadowDetail').style.display = s.eyebrowShadowEnabled ? 'block' : 'none';
-    el('fButtonShadowEnabled').checked = !!s.buttonShadowEnabled;
-    el('jcsButtonShadowDetail').style.display = s.buttonShadowEnabled ? 'block' : 'none';
-    el('fButtonHoverEnabled').checked = !!s.buttonHoverEnabled;
-    el('jcsButtonHoverDetail').style.display = s.buttonHoverEnabled ? 'block' : 'none';
-    refreshOverlayUI(); refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields();
-  }
-
-  ['fBtnNewTab','fDeskBgNewTab','fMobBgNewTab','fDeskShowContent','fMobShowContent'].forEach(function(id){
-    el(id).addEventListener('change',function(){
-      var map={fBtnNewTab:'buttonNewTab',fDeskBgNewTab:'desktopBgNewTab',fMobBgNewTab:'mobileBgNewTab',fDeskShowContent:'showContent',fMobShowContent:'mobileShowContent'};
-      cur()[map[id]]=!!this.checked; markDirty(); renderAll();
-    });
-  });
-
-  function refreshOverlayUI(){
-    var type = cur().overlayType;
-    el('jcsOverlayColorRow').style.display = type==='color' ? 'block' : 'none';
-    el('jcsOverlayImageRow').style.display = type==='image' ? 'block' : 'none';
-  }
-  el('fOverlayType').addEventListener('change', function(){ cur().overlayType = el('fOverlayType').value; refreshOverlayUI(); renderAll(); markDirty(); });
-
-  var LAYOUT_PX_FIELDS = { fPaddingX:'contentPadding', fShiftX:'contentShiftX', fShiftY:'contentShiftY', fGapEyebrow:'gapEyebrow', fGapHeading:'gapHeading', fGapSub:'gapSub' };
-  var TYPO_PX_FIELDS = { fEyebrowSize:'eyebrowSize', fHeadingSize:'headingSize', fSubSize:'subSize', fButtonFontSize:'buttonFontSize', fWidth:'contentWidth', fEyebrowShiftX:'eyebrowShiftX', fEyebrowShiftY:'eyebrowShiftY', fHeadingShiftX:'headingShiftX', fHeadingShiftY:'headingShiftY', fSubShiftX:'subShiftX', fSubShiftY:'subShiftY', fButtonShiftX:'buttonShiftX', fButtonShiftY:'buttonShiftY', fButtonWidth:'buttonWidth' };
-  var TYPO_SPACING_FIELDS = { fEyebrowLetterSpacing:'eyebrowLetterSpacing', fHeadingLetterSpacing:'headingLetterSpacing', fSubLetterSpacing:'subLetterSpacing', fButtonLetterSpacing:'buttonLetterSpacing' };
-
-  function refreshTypographyFields(){
-    el('jcsTypeModeBadge').textContent = 'Editing: ' + (mode==='desktop' ? 'Desktop' : 'Mobile') + ' typography';
-    el('jcsCopyTypo').textContent = mode==='desktop' ? 'Copy from Mobile typography' : 'Copy from Desktop typography';
-    Object.keys(TYPO_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(TYPO_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fWidthNumber')) el('fWidthNumber').value=curVal('contentWidth');
-    Object.keys(TYPO_SPACING_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(TYPO_SPACING_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; });
-    document.querySelectorAll('#jcsTextAlignGroup button').forEach(function(b){ b.classList.toggle('active', b.dataset.value === curVal('textAlign')); });
-  }
-  Object.keys(TYPO_PX_FIELDS).forEach(function(id){
-    el(id).addEventListener('input', function(){ setVal(TYPO_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fWidth' && el('fWidthNumber')) el('fWidthNumber').value=el(id).value; renderAll(); });
-  });
-  Object.keys(TYPO_SPACING_FIELDS).forEach(function(id){
-    el(id).addEventListener('input', function(){ setVal(TYPO_SPACING_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; renderAll(); });
-  });
-  if(el('fWidthNumber')) el('fWidthNumber').addEventListener('input', function(){ var v=Math.max(120,Math.min(1900,Number(this.value)||120)); setVal('contentWidth',v); el('fWidth').value=v; el('fWidthVal').textContent=v+'px'; renderAll(); });
-  document.querySelectorAll('.jcs-width-preset').forEach(function(btn){ btn.addEventListener('click', function(){ var v=Number(btn.dataset.width)||480; setVal('contentWidth',v); el('fWidth').value=v; if(el('fWidthNumber')) el('fWidthNumber').value=v; el('fWidthVal').textContent=v+'px'; renderAll(); markDirty(); }); });
-  document.querySelectorAll('#jcsTextAlignGroup button').forEach(function(b){ b.addEventListener('click', function(){ setVal('textAlign', b.dataset.value); refreshTypographyFields(); renderAll(); }); });
-  el('jcsCopyTypo').onclick=function(){
-    Object.keys(TYPO_PX_FIELDS).concat(Object.keys(TYPO_SPACING_FIELDS)).forEach(function(id){
-      var base = TYPO_PX_FIELDS[id] || TYPO_SPACING_FIELDS[id];
-      var fromKey = mode==='desktop' ? 'mobile'+base.charAt(0).toUpperCase()+base.slice(1) : base;
-      var toKey = mode==='desktop' ? base : 'mobile'+base.charAt(0).toUpperCase()+base.slice(1);
-      cur()[toKey] = cur()[fromKey];
-    });
-    var fromAlign = mode==='desktop' ? 'mobileTextAlign' : 'textAlign';
-    var toAlign = mode==='desktop' ? 'textAlign' : 'mobileTextAlign';
-    cur()[toAlign] = cur()[fromAlign];
-    refreshTypographyFields(); renderAll(); markDirty();
-  };
-
-  function refreshLayoutFields(){
-    el('jcsLayoutModeBadge').textContent = 'Editing: ' + (mode==='desktop' ? 'Desktop' : 'Mobile') + ' layout';
-    el('jcsCopyLayout').textContent = mode==='desktop' ? 'Copy from Mobile layout' : 'Copy from Desktop layout';
-    document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){ b.classList.toggle('active', b.dataset.value === curVal('contentSide')); });
-    el('fAlignY').value = curVal('contentAlign');
-    Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(LAYOUT_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; }); if(el('fShiftXNumber')) el('fShiftXNumber').value=curVal('contentShiftX'); if(el('fShiftYNumber')) el('fShiftYNumber').value=curVal('contentShiftY');
-  }
-  document.querySelectorAll('#jcsJustifyGroup button').forEach(function(b){
-    b.addEventListener('click', function(){
-      setVal('contentSide', b.dataset.value);
-      document.querySelectorAll('#jcsJustifyGroup button').forEach(function(x){x.classList.remove('active');});
-      b.classList.add('active'); renderAll();
-    });
-  });
-  el('fAlignY').addEventListener('change', function(){ setVal('contentAlign', el('fAlignY').value); renderAll(); });
-  Object.keys(LAYOUT_PX_FIELDS).forEach(function(id){
-    el(id).addEventListener('input', function(){ setVal(LAYOUT_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; if(id==='fShiftX' && el('fShiftXNumber')) el('fShiftXNumber').value=el(id).value; if(id==='fShiftY' && el('fShiftYNumber')) el('fShiftYNumber').value=el(id).value; renderAll(); });
-  });
-
-  if(el('fShiftXNumber')) el('fShiftXNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftX',v); el('fShiftX').value=v; el('fShiftXVal').textContent=v+'px'; renderAll(); });
-  if(el('fShiftYNumber')) el('fShiftYNumber').addEventListener('input', function(){ var v=Math.max(-1000,Math.min(1000,Number(this.value)||0)); setVal('contentShiftY',v); el('fShiftY').value=v; el('fShiftYVal').textContent=v+'px'; renderAll(); });
-
-  var CONTENTBG_PX_FIELDS = { fContentBgPadding:'contentBgPadding', fContentBgRadius:'contentBgRadius', fContentBgShadowBlur:'contentBgShadowBlur', fContentBgShadowY:'contentBgShadowY' };
-  var CONTENTBG_COLOR_FIELDS = { fContentBgColor:'contentBgColor', fContentBgShadowColor:'contentBgShadowColor' };
-  function refreshContentBgFields(){
-    el('fContentBgEnabled').checked = !!curVal('contentBgEnabled');
-    el('fContentBgShadowEnabled').checked = !!curVal('contentBgShadowEnabled');
-    el('jcsContentBgDetail').style.display = curVal('contentBgEnabled') ? 'block' : 'none';
-    el('jcsContentBgShadowDetail').style.display = curVal('contentBgShadowEnabled') ? 'block' : 'none';
-    Object.keys(CONTENTBG_COLOR_FIELDS).forEach(function(id){ el(id).value = curVal(CONTENTBG_COLOR_FIELDS[id]); });
-    Object.keys(CONTENTBG_PX_FIELDS).forEach(function(id){ var f = el(id); f.value = curVal(CONTENTBG_PX_FIELDS[id]); el(id+'Val').textContent = f.value+'px'; });
-    el('fContentBgOpacity').value = curVal('contentBgOpacity'); el('fContentBgOpacityVal').textContent = curVal('contentBgOpacity')+'%';
-    el('fContentBgShadowOpacity').value = curVal('contentBgShadowOpacity'); el('fContentBgShadowOpacityVal').textContent = curVal('contentBgShadowOpacity')+'%';
-  }
-  el('fContentBgEnabled').addEventListener('change', function(){ setVal('contentBgEnabled', el('fContentBgEnabled').checked); refreshContentBgFields(); renderAll(); });
-  el('fContentBgShadowEnabled').addEventListener('change', function(){ setVal('contentBgShadowEnabled', el('fContentBgShadowEnabled').checked); refreshContentBgFields(); renderAll(); });
-  Object.keys(CONTENTBG_COLOR_FIELDS).forEach(function(id){ el(id).addEventListener('input', function(){ setVal(CONTENTBG_COLOR_FIELDS[id], el(id).value); renderAll(); }); });
-  Object.keys(CONTENTBG_PX_FIELDS).forEach(function(id){
-    el(id).addEventListener('input', function(){ setVal(CONTENTBG_PX_FIELDS[id], Number(el(id).value)); el(id+'Val').textContent = el(id).value+'px'; renderAll(); });
-  });
-  el('fContentBgOpacity').addEventListener('input', function(){ setVal('contentBgOpacity', Number(el('fContentBgOpacity').value)); el('fContentBgOpacityVal').textContent = el('fContentBgOpacity').value+'%'; renderAll(); });
-  el('fContentBgShadowOpacity').addEventListener('input', function(){ setVal('contentBgShadowOpacity', Number(el('fContentBgShadowOpacity').value)); el('fContentBgShadowOpacityVal').textContent = el('fContentBgShadowOpacity').value+'%'; renderAll(); });
-
-  el('jcsCopyLayout').onclick=function(){
-    var LAYOUT_BASES = ['contentSide','contentAlign','contentPadding','contentShiftX','contentShiftY','gapEyebrow','gapHeading','gapSub','contentBgEnabled','contentBgColor','contentBgOpacity','contentBgPadding','contentBgRadius','contentBgShadowEnabled','contentBgShadowColor','contentBgShadowOpacity','contentBgShadowBlur','contentBgShadowY'];
-    LAYOUT_BASES.forEach(function(base){
-      var fromKey = mode==='desktop' ? 'mobile'+base.charAt(0).toUpperCase()+base.slice(1) : base;
-      var toKey = mode==='desktop' ? base : 'mobile'+base.charAt(0).toUpperCase()+base.slice(1);
-      cur()[toKey] = cur()[fromKey];
-    });
-    refreshLayoutFields(); refreshContentBgFields(); renderAll(); markDirty();
-  };
-
-  Object.keys(simpleFields).forEach(function(id){
-    var f=el(id); if(!f) return;
-    f.addEventListener('input', function(){ cur()[simpleFields[id]] = f.value; renderAll(); markDirty(); });
-  });
-  Object.keys(rangeFields).forEach(function(id){
-    var f=el(id); if(!f) return;
-    f.addEventListener('input', function(){ cur()[rangeFields[id]] = Number(f.value); var v=el(id+'Val'); if(v) v.textContent=valSuffix(id, f.value); renderAll(); markDirty(); });
-  });
-  el('fPauseHover').addEventListener('change', function(){ cur().pauseHover = el('fPauseHover').checked; markDirty(); });
-  el('fEyebrowBgEnabled').addEventListener('change', function(){ cur().eyebrowBgEnabled = el('fEyebrowBgEnabled').checked; el('jcsEyebrowBgDetail').style.display = cur().eyebrowBgEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
-  el('fButtonBgEnabled').addEventListener('change', function(){ cur().buttonBgEnabled = el('fButtonBgEnabled').checked; el('jcsButtonBgDetail').style.display = cur().buttonBgEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
-  el('fEyebrowShadowEnabled').addEventListener('change', function(){ cur().eyebrowShadowEnabled = el('fEyebrowShadowEnabled').checked; el('jcsEyebrowShadowDetail').style.display = cur().eyebrowShadowEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
-  el('fButtonShadowEnabled').addEventListener('change', function(){ cur().buttonShadowEnabled = el('fButtonShadowEnabled').checked; el('jcsButtonShadowDetail').style.display = cur().buttonShadowEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
-  el('fButtonHoverEnabled').addEventListener('change', function(){ cur().buttonHoverEnabled = el('fButtonHoverEnabled').checked; el('jcsButtonHoverDetail').style.display = cur().buttonHoverEnabled ? 'block' : 'none'; renderAll(); markDirty(); });
-  ['fDeskHeight','fMobHeight'].forEach(function(id){
-    el(id).addEventListener('input', function(){
-      var value = Math.max(200, Math.min(1600, Number(el(id).value) || 200));
-      cur()[simpleFields[id]] = value;
-      renderCanvas();
-      renderCode();
-      markDirty();
-    });
-    el(id).addEventListener('change', function(){
-      var value = Math.max(200, Math.min(1600, Number(el(id).value) || 200));
-      el(id).value = value;
-      cur()[simpleFields[id]] = value;
-      renderCanvas();
-      renderCode();
-      markDirty();
-    });
-  });
-  el('fAutoplay').addEventListener('change', function(){ cur().autoplay = Number(el('fAutoplay').value); markDirty(); renderCode(); });
-  el('fBannerRadius').addEventListener('input', function(){ setBannerSetting('bannerRadius', Math.max(0, Math.min(200, Number(this.value) || 0))); });
-  el('fMobileBannerRadius').addEventListener('input', function(){ setBannerSetting('mobileBannerRadius', this.value === '' ? null : Math.max(0, Math.min(200, Number(this.value) || 0))); });
-  el('fMobileBreakpoint').addEventListener('change', function(){ var v = Math.max(320, Math.min(2000, Number(this.value) || 900)); this.value = v; setBannerSetting('mobileBreakpoint', v); });
-  el('fResetHostPadding').addEventListener('change', function(){ setBannerSetting('resetHostPadding', !!this.checked); });
-
-  // ---------- gradient editor ----------
-  el('fGradType').addEventListener('change', function(){ curGradient().type = el('fGradType').value; renderGradientUI(); renderAll(); markDirty(); });
-  el('fAngle').addEventListener('input', function(){ curGradient().angle = Number(el('fAngle').value)%360; syncDial(); renderAll(); markDirty(); });
-  el('fRadX').addEventListener('input', function(){ curGradient().radialX = Number(el('fRadX').value); el('fRadXVal').textContent = el('fRadX').value+'%'; renderAll(); markDirty(); });
-  el('fRadY').addEventListener('input', function(){ curGradient().radialY = Number(el('fRadY').value); el('fRadYVal').textContent = el('fRadY').value+'%'; renderAll(); markDirty(); });
-
-  function renderGradientUI(){
-    var g = curGradient();
-    var editor = el('jcsGradientEditor');
-    editor.style.display = g.type==='off' ? 'none' : 'block';
-    el('jcsAngleRow').style.display = g.type==='linear' ? 'flex' : 'none';
-    el('jcsAngleLabel').style.display = g.type==='linear' ? 'block' : 'none';
-    el('jcsRadialRow').style.display = g.type==='radial' ? 'block' : 'none';
-    el('jcsRadialLabel').style.display = g.type==='radial' ? 'block' : 'none';
-    var bar = el('jcsGradBar');
-    bar.innerHTML = '<div class="jcs-gradient-bar-fill" style="background:linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')"></div>';
-    g.stops.forEach(function(s,i){
-      var h=document.createElement('div');
-      h.className='jcs-stop-handle'+(i===selectedStop?' selected':'');
-      h.style.left=s.pos+'%'; h.style.setProperty('--swatch', s.color); h.dataset.index=i;
-      h.addEventListener('pointerdown', function(e){
-        e.stopPropagation(); selectedStop=i; renderGradientUI();
-        var moving=true; h.setPointerCapture(e.pointerId);
-        function move(ev){ if(!moving) return; var r=bar.getBoundingClientRect(); var pct=Math.round(((ev.clientX-r.left)/r.width)*100); pct=Math.max(0,Math.min(100,pct)); g.stops[i].pos=pct; renderGradientUI(); renderAll(); markDirty(); }
-        function up(){ moving=false; h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',up); }
-        h.addEventListener('pointermove',move); h.addEventListener('pointerup',up);
-      });
-      bar.appendChild(h);
-    });
-    bar.onclick = function(e){
-      if(e.target !== bar) return;
-      var r=bar.getBoundingClientRect(); var pct=Math.round(((e.clientX-r.left)/r.width)*100);
-      g.stops.push({pos:pct, color:'#000000', opacity:0.5}); selectedStop = g.stops.length-1;
-      renderGradientUI(); renderAll(); markDirty();
-    };
-    renderStopEditor(); syncDial();
-  }
-  function renderStopEditor(){
-    var g = curGradient(); var s = g.stops[selectedStop];
-    if(!s){ el('jcsStopEditor').innerHTML=''; return; }
-    var wrap = el('jcsStopEditor');
-    wrap.innerHTML =
-      '<div class="row color-row"><label>Colour</label><div class="jcs-stop-color-control"><span class="jcs-stop-swatch" id="jcsStopSwatch" style="--swatch:'+s.color+'" aria-hidden="true"></span><input id="jcsStopHex" type="text" value="'+s.color.toUpperCase()+'" maxlength="7" spellcheck="false" placeholder="#000000" aria-label="Gradient colour hex value"></div><span></span></div>' +
-      '<div class="jcs-stop-presets" aria-label="Quick gradient colours">' +
-        '<button type="button" data-color="#FFFFFF" style="--preset:#FFFFFF" title="White"></button>' +
-        '<button type="button" data-color="#000000" style="--preset:#000000" title="Black"></button>' +
-        '<button type="button" data-color="#D70015" style="--preset:#D70015" title="Wheels red"></button>' +
-        '<button type="button" data-color="#1E3A8A" style="--preset:#1E3A8A" title="Dark blue"></button>' +
-        '<button type="button" data-color="#2563EB" style="--preset:#2563EB" title="Blue"></button>' +
-        '<button type="button" data-color="#E5E7EB" style="--preset:#E5E7EB" title="Light grey"></button>' +
-      '</div>' +
-      '<div class="row"><label>Opacity</label><input id="jcsStopOpacity" type="range" min="0" max="100" value="'+Math.round(s.opacity*100)+'"><span id="jcsStopOpacityVal">'+Math.round(s.opacity*100)+'%</span></div>' +
-      '<div class="row"><label>Position</label><input id="jcsStopPos" type="range" min="0" max="100" value="'+s.pos+'"><button class="del" id="jcsStopDel" '+(g.stops.length<=2?'disabled':'')+'>Delete stop</button></div>';
-
-    function paintStopColor(value){
-      var v = String(value || '').trim();
-      if(/^#[0-9a-fA-F]{6}$/.test(v) === false) return false;
-      s.color = v.toUpperCase();
-      var hex = el('jcsStopHex');
-      var swatch = el('jcsStopSwatch');
-      if(hex && hex.value.toUpperCase() !== s.color) hex.value = s.color;
-      if(swatch) swatch.style.setProperty('--swatch', s.color);
-      var bar = el('jcsGradBar');
-      if(bar && bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')';
-      var handle = bar ? bar.querySelector('.jcs-stop-handle.selected') : null;
-      if(handle) handle.style.setProperty('--swatch', s.color);
-      renderAll(); markDirty();
-      return true;
-    }
-
-    el('jcsStopHex').addEventListener('input', function(){
-      var v=this.value.trim();
-      if(v && v.charAt(0)!=='#') v='#'+v;
-      if(/^#[0-9a-fA-F]{6}$/.test(v)) paintStopColor(v);
-    });
-    el('jcsStopHex').addEventListener('blur', function(){
-      var v=this.value.trim();
-      if(v && v.charAt(0)!=='#') v='#'+v;
-      if(!paintStopColor(v)) this.value=s.color.toUpperCase();
-    });
-
-    wrap.querySelectorAll('.jcs-stop-presets button').forEach(function(btn){
-      btn.addEventListener('click', function(){ paintStopColor(this.dataset.color); });
-    });
-
-    el('jcsStopOpacity').addEventListener('input', function(){ s.opacity = Number(this.value)/100; el('jcsStopOpacityVal').textContent = this.value+'%'; renderAll(); markDirty();
-      var bar=el('jcsGradBar'); if(bar.firstChild) bar.firstChild.style.background='linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')'; });
-    el('jcsStopPos').addEventListener('input', function(){ s.pos = Number(this.value); renderGradientUI(); renderAll(); markDirty(); });
-    el('jcsStopDel').addEventListener('click', function(){ if(g.stops.length<=2) return; g.stops.splice(selectedStop,1); selectedStop = Math.max(0, selectedStop-1); renderGradientUI(); renderAll(); markDirty(); });
-  }
-  function syncDial(){ var g = curGradient(); el('fAngle').value = g.angle; el('jcsDialHandle').style.transform = 'rotate('+g.angle+'deg)'; }
-  (function setupDial(){
-    var dial = el('jcsDial');
-    dial.addEventListener('pointerdown', function(e){
-      dial.setPointerCapture(e.pointerId);
-      function update(ev){
-        var r=dial.getBoundingClientRect(); var cx=r.left+r.width/2, cy=r.top+r.height/2; var dx=ev.clientX-cx, dy=ev.clientY-cy;
-        var angle = (Math.atan2(dx,-dy)*180/Math.PI + 360) % 360;
-        curGradient().angle = Math.round(angle); syncDial(); renderAll(); markDirty();
-      }
-      update(e);
-      function move(ev){ update(ev); }
-      function up(){ dial.removeEventListener('pointermove',move); dial.removeEventListener('pointerup',up); }
-      dial.addEventListener('pointermove',move); dial.addEventListener('pointerup',up);
-    });
-  })();
-
-  // ---------- canvas render ----------
-  var canvas = el('jcsCanvas');
-  var canvasImg = el('jcsCanvasImg');
-
-  function editorCanvasDocument(){
-    // Render the selected banner with the EXACT same HTML/CSS generator used by Copy embed code.
-    // We temporarily generate only the active banner so the editor never previews a different slide.
-    var originalSlides = slides;
-    var originalActive = active;
-    var selectedSlide = originalSlides[originalActive] || originalSlides[0];
-    slides = [selectedSlide];
-    active = 0;
-    bannerRoot = originalSlides[0];
-    var code = generateCode();
-    bannerRoot = null;
-    slides = originalSlides;
-    active = originalActive;
-    return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-      '<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}body{font-family:Inter,Arial,sans-serif}</style>' +
-      '</head><body>' + code + '</body></html>';
-  }
-
-  function renderCanvas(){
-    var s = cur();
-    canvas.className = 'jcs-canvas ' + mode;
-
-    // The editor viewport IS the real output viewport.
-    var desiredW = mode==='desktop' ? Number(el('jcsPreviewWidth').value) : 390;
-    var desiredH = mode==='desktop' ? Number(s.desktopHeight || 490) : Number(s.mobileHeight || 620);
-    canvas.style.width = desiredW+'px';
-    canvas.style.height = desiredH+'px';
-    canvas.style.minWidth = desiredW+'px';
-    canvas.style.flex = '0 0 '+desiredW+'px';
-    canvas.style.background = 'transparent';
-
-    var stage = el('jcsStage');
-    var availableW = Math.max(1, stage.clientWidth - 40);
-    var availableH = Math.max(1, stage.clientHeight - 40);
-    // Scale the whole real viewport only so it fits on screen. Its internal layout remains exact.
-    var scale = Math.min(1, availableW / desiredW, availableH / desiredH);
-    canvas.style.transformOrigin = 'top left';
-    canvas.style.transform = 'scale('+scale+')';
-    var wrap = el('jcsScaleWrap');
-    wrap.style.width = (desiredW*scale)+'px';
-    wrap.style.height = (desiredH*scale)+'px';
-
-    var frame = el('jcsCanvasFrame');
-    if(!frame){
-      frame = document.createElement('iframe');
-      frame.id = 'jcsCanvasFrame';
-      frame.title = 'Actual banner output';
-      frame.setAttribute('aria-label','Actual banner output');
-      frame.tabIndex = -1;
-      canvas.innerHTML = '';
-      canvas.appendChild(frame);
-    }
-    frame.style.width = desiredW+'px';
-    frame.style.height = desiredH+'px';
-    frame.srcdoc = editorCanvasDocument();
-  }
-
-  // Background is locked; use Background controls for position and sizing.
-
-
-  function refreshGradientFields(){
-    el('jcsGradientModeBadge').textContent = 'Editing: ' + (mode==='desktop' ? 'Desktop' : 'Mobile') + ' gradient';
-    el('jcsCopyGradient').textContent = mode==='desktop' ? 'Copy from Mobile gradient' : 'Copy from Desktop gradient';
-    el('fGradType').value = curGradient().type; el('fAngle').value = curGradient().angle;
-    el('fRadX').value = curGradient().radialX; el('fRadY').value = curGradient().radialY;
-    el('fRadXVal').textContent = curGradient().radialX+'%'; el('fRadYVal').textContent = curGradient().radialY+'%';
-    selectedStop = 0; renderGradientUI();
-  }
-  el('jcsCopyGradient').onclick=function(){
-    if(mode==='desktop'){ cur().gradient = JSON.parse(JSON.stringify(cur().mobileGradient)); } else { cur().mobileGradient = JSON.parse(JSON.stringify(cur().gradient)); }
-    refreshGradientFields(); renderAll(); markDirty();
-  };
-
-  function seedMobileFromDesktopOnce(){
-    var s = cur();
-    if(s.mobileSeededFromDesktop) return;
-
-    // Mobile starts from the desktop design instead of a generic blank/default state.
-    // This runs once per banner. After that, mobile stays independently editable.
-    s.mobileGradient = JSON.parse(JSON.stringify(s.gradient || defaultGradient()));
-    s.mobileContentSide = s.contentSide;
-    s.mobileTextAlign = s.textAlign;
-    s.mobileContentAlign = s.contentAlign;
-    s.mobileContentPadding = s.contentPadding;
-    s.mobileContentShiftX = s.contentShiftX;
-    s.mobileContentShiftY = s.contentShiftY;
-    s.mobileGapEyebrow = s.gapEyebrow;
-    s.mobileGapHeading = s.gapHeading;
-    s.mobileGapSub = s.gapSub;
-    s.mobileContentWidth = s.contentWidth;
-
-    s.mobileEyebrowSize = s.eyebrowSize;
-    s.mobileHeadingSize = s.headingSize;
-    s.mobileSubSize = s.subSize;
-    s.mobileButtonFontSize = s.buttonFontSize;
-    s.mobileEyebrowLetterSpacing = s.eyebrowLetterSpacing;
-    s.mobileHeadingLetterSpacing = s.headingLetterSpacing;
-    s.mobileSubLetterSpacing = s.subLetterSpacing;
-    s.mobileButtonLetterSpacing = s.buttonLetterSpacing;
-
-    s.mobileEyebrowShiftX = s.eyebrowShiftX;
-    s.mobileEyebrowShiftY = s.eyebrowShiftY;
-    s.mobileHeadingShiftX = s.headingShiftX;
-    s.mobileHeadingShiftY = s.headingShiftY;
-    s.mobileSubShiftX = s.subShiftX;
-    s.mobileSubShiftY = s.subShiftY;
-    s.mobileButtonShiftX = s.buttonShiftX;
-    s.mobileButtonShiftY = s.buttonShiftY;
-    s.mobileButtonWidth = s.buttonWidth;
-
-    s.mobileContentBgEnabled = s.contentBgEnabled;
-    s.mobileContentBgColor = s.contentBgColor;
-    s.mobileContentBgOpacity = s.contentBgOpacity;
-    s.mobileContentBgPadding = s.contentBgPadding;
-    s.mobileContentBgRadius = s.contentBgRadius;
-    s.mobileContentBgShadowEnabled = s.contentBgShadowEnabled;
-    s.mobileContentBgShadowColor = s.contentBgShadowColor;
-    s.mobileContentBgShadowOpacity = s.contentBgShadowOpacity;
-    s.mobileContentBgShadowBlur = s.contentBgShadowBlur;
-    s.mobileContentBgShadowY = s.contentBgShadowY;
-
-    // Give mobile a usable portrait starting point instead of copying a desktop crop literally.
-    s.mobileX = 50;
-    s.mobileY = 38;
-    s.mobileWidth = (s.desktopFit==='contain' || s.desktopFit==='width') ? 150 : 120;
-
-    s.mobileSeededFromDesktop = true;
-    markDirty();
-  }
-
-  el('jcsDesktopMode').onclick=function(){ mode='desktop'; el('jcsDesktopMode').classList.add('active'); el('jcsMobileMode').classList.remove('active'); el('jcsWidthRow').style.display='flex'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
-  el('jcsMobileMode').onclick=function(){ seedMobileFromDesktopOnce(); mode='mobile'; el('jcsMobileMode').classList.add('active'); el('jcsDesktopMode').classList.remove('active'); el('jcsWidthRow').style.display='none'; refreshLayoutFields(); refreshTypographyFields(); refreshContentBgFields(); refreshGradientFields(); renderCanvas(); };
-  el('jcsPreviewWidth').addEventListener('input', function(){ el('jcsPreviewWidthVal').textContent = this.value+'px'; renderCanvas(); });
-  el('jcsHeroWidth').onclick = function(){ el('jcsPreviewWidth').value = 920; el('jcsPreviewWidthVal').textContent = '920px'; renderCanvas(); };
-
-  document.querySelectorAll('.jcs-tab').forEach(function(t){
-    t.addEventListener('click', function(){
-      document.querySelectorAll('.jcs-tab').forEach(function(x){x.classList.remove('active');});
-      document.querySelectorAll('.jcs-tabpanel').forEach(function(x){x.classList.remove('active');});
-      t.classList.add('active');
-      document.querySelector('.jcs-tabpanel[data-panel="'+t.dataset.tab+'"]').classList.add('active');
-    });
-  });
-
-  function renderSlideTabs(){
-    var wrap = el('jcsSlideTabs'); wrap.innerHTML='';
-    slides.forEach(function(_,i){
-      var tab=document.createElement('div'); tab.className = 'jcs-slide-tab-wrap' + (i===active ? ' active' : '');
-      var b=document.createElement('button'); b.textContent='Banner '+(i+1); b.onclick=function(){ active=i; loadFields(); renderAll(); }; tab.appendChild(b);
-      if(slides.length>1){
-        var del=document.createElement('button'); del.className='jcs-slide-tab-delete'; del.title='Delete this banner'; del.textContent='\u00D7';
-        del.onclick=function(e){ e.stopPropagation(); if(!window.confirm('Delete Banner '+(i+1)+'?')) return; slides.splice(i,1); active = Math.max(0, active >= i ? active-1 : active); loadFields(); renderAll(); markDirty(); };
-        tab.appendChild(del);
-      }
-      wrap.appendChild(tab);
-    });
-    el('jcsModeBadge').textContent = slides.length>1 ? '- Slider ('+slides.length+')' : '- Single banner';
-  }
-  el('jcsAdd').onclick=function(){ slides.push(defaults()); active=slides.length-1; loadFields(); renderAll(); markDirty(); };
-  el('jcsDuplicate').onclick=function(){
-    var sourceIndex=active;
-    slides.splice(active+1,0,JSON.parse(JSON.stringify(cur())));
-    active++;
-    if(DATA.language==='en'){
-      localeOps.push({type:'duplicate',sourceIndex:sourceIndex,targetIndex:active});
-    }
-    loadFields(); renderAll(); markDirty();
-  };
-  el('jcsRemove').onclick=function(){
-    if(slides.length===1){ window.alert('A project must contain at least one banner. Use New blank to reset it.'); return; }
-    if(!window.confirm('Remove Banner '+(active+1)+'?')) return;
-    slides.splice(active,1); active=Math.max(0,active-1); loadFields(); renderAll(); markDirty();
-  };
 
   // ---------- portable code export (self-contained — no dependency on this plugin) ----------
   function slideMarkup(s, i){
@@ -1147,7 +359,6 @@ googleFontsLink() + '\n' +
 '<\/script>';
   }
 
-  var livePreviewWindow = null;
   function previewDocument(forceHeight){
     var h = Number(forceHeight || 0);
     var forceCss = h ? '<style>html,body{height:'+h+'px!important;min-height:0!important;overflow:hidden!important;background:transparent!important}body>.csx-banner-root{height:'+h+'px!important;min-height:0!important;margin:0!important}</style>' : '';
@@ -1159,132 +370,6 @@ googleFontsLink() + '\n' +
       '<script>document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");if(!a)return;var h=a.getAttribute("href");if(!h||h.charAt(0)==="#")return;e.preventDefault();window.open(a.href,"_blank","noopener");},true);<\/script>' +
       '</body></html>';
   }
-
-  // Live preview window: the banner at its real size, centred, with a bar that says
-  // exactly what you are looking at. Links open in a new tab so you never lose the preview.
-  function livePreviewShell(){
-    var isMobile = mode === 'mobile';
-    var w = isMobile ? 390 : (Number(el('jcsPreviewWidth').value) || 920);
-    var h = isMobile ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
-    var name = esc(el('jcsTitle').value || 'Banner'), lang = esc(DATA.languageLabel || 'English');
-    var info = '<b>Live preview</b> · ' + name + ' · ' + lang + ' · ' + (isMobile ? 'Mobile' : 'Desktop') + ' · ' + w + ' × ' + h + 'px · <span id="pvSlide">Banner 1 of ' + slides.length + '</span> · links open in a new tab';
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Live preview · ' + name + ' · ' + lang + '</title>' +
-      '<style>html,body{margin:0;background:#e9e9e9;font:13px/1.4 system-ui,sans-serif;color:#222}.pvbar{position:sticky;top:0;z-index:2;background:#141414;color:#ddd;padding:9px 16px}.pvbar b{color:#fff}.pvwrap{padding:24px 16px;display:flex;justify-content:center}.pvwrap iframe{border:0;display:block;max-width:none;background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.18)}</style>' +
-      '</head><body><div class="pvbar">' + info + '</div><div class="pvwrap"><iframe id="pv" title="Banner preview" style="width:' + w + 'px;height:' + h + 'px"></iframe></div>' +
-      '<script>setInterval(function(){try{var d=document.getElementById("pv").contentDocument;var s=[].slice.call(d.querySelectorAll(".csx-slide"));var i=s.findIndex(function(x){return x.classList.contains("is-active")});if(s.length)document.getElementById("pvSlide").textContent="Banner "+(i+1)+" of "+s.length;}catch(e){}},300);<\/script>' +
-      '</body></html>';
-  }
-
-  function writeLivePreviewWindow(){
-    if(!livePreviewWindow || livePreviewWindow.closed) return;
-    try{
-      var d=livePreviewWindow.document;
-      var h = mode === 'mobile' ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
-      d.open(); d.write(livePreviewShell()); d.close();
-      d.getElementById('pv').srcdoc = previewDocument(h);
-    }catch(e){}
-  }
-
-  function updateActualPreview(){
-    var modal=el('jcsPreviewModal');
-    if(modal && !modal.hidden){
-      var frame=el('jcsPreviewFrame');
-      var w=parseInt(el('jcsPreviewDevice').style.width,10)||390;
-      var h=w<=bannerSettings().breakpoint ? Number(slides[0].mobileHeight||620) : Number(slides[0].desktopHeight||490);
-      frame.srcdoc=previewDocument(h);
-    }
-    writeLivePreviewWindow();
-  }
-
-  function renderCode(){
-    el('jcsCodeOutput').value = generateCode();
-    updateActualPreview();
-  }
-
-  function renderAll(){ renderSlideTabs(); renderCanvas(); renderCode(); }
-
-  el('jcsCopyCode').onclick = function(){
-    var btn = this, ta = el('jcsCodeOutput');
-    ta.select();
-    navigator.clipboard.writeText(ta.value).then(function(){
-      var old = btn.textContent; btn.textContent = 'Copied!';
-      setTimeout(function(){ btn.textContent = old; }, 1400);
-    });
-  };
-
-  if(el('jcsAutoTranslate')) el('jcsAutoTranslate').onclick = function(){
-    var btn=this;
-    if(!window.confirm('Translate the current English text into French? You can edit the French wording afterward.')) return;
-    btn.disabled=true; var old=btn.textContent; btn.textContent='Translating…'; el('jcsStatus').textContent='Translating to French…';
-    fetch(DATA.translateUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WP-Nonce':DATA.nonce},body:JSON.stringify({sourceLanguage:'en'})})
-      .then(function(r){if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})
-      .then(function(res){ if(!res.data) throw new Error(res.message || 'No translation returned'); slides=res.data.map(function(x){return Object.assign(defaults(),x)}); active=0; loadFields(); renderAll(); markDirty(); el('jcsStatus').textContent=res.partial?'French translation completed with a few fields left unchanged — review and Save':'All banner text translated to French — review and Save'; })
-      .catch(function(err){window.alert('Translation failed: '+err.message); el('jcsStatus').textContent='Translation failed';})
-      .finally(function(){btn.disabled=false;btn.textContent=old;});
-  };
-
-  function setPreviewWidth(width){
-    width=Number(width)||390;
-    var outputHeight = width <= bannerSettings().breakpoint ? Number(slides[0].mobileHeight || 620) : Number(slides[0].desktopHeight || 490);
-    var device = el('jcsPreviewDevice');
-    var frame = el('jcsPreviewFrame');
-    device.style.width=width+'px';
-    device.style.height=outputHeight+'px';
-    device.style.minHeight='0';
-    frame.style.height=outputHeight+'px';
-    frame.style.minHeight='0';
-    el('jcsPreviewSizeLabel').textContent=width+' × '+outputHeight+'px actual output';
-    [].slice.call(document.querySelectorAll('[data-preview-width]')).forEach(function(btn){
-      btn.classList.toggle('active', Number(btn.getAttribute('data-preview-width'))===width);
-    });
-    updateActualPreview();
-  }
-
-  el('jcsLivePreview').onclick=function(){
-    var previewW = mode==='mobile' ? 480 : Math.min(screen.availWidth || 1920, (Number(el('jcsPreviewWidth').value) || 920) + 80);
-    var previewH = mode==='mobile' ? Number(slides[0].mobileHeight||620) : Number(slides[0].desktopHeight||490);
-    livePreviewWindow = window.open('', 'jcs-live-preview', 'width='+previewW+',height='+(previewH+140)+',resizable=yes,scrollbars=yes');
-    if(livePreviewWindow){
-      writeLivePreviewWindow();
-      try{ livePreviewWindow.focus(); }catch(e){}
-    }else{
-      // Popup blocked: fall back to the embedded exact-size preview.
-      el('jcsPreviewModal').hidden=false; setPreviewWidth(mode==='mobile'?390:920); updateActualPreview();
-    }
-  };
-  el('jcsClosePreview').onclick=function(){ el('jcsPreviewModal').hidden=true; };
-  el('jcsPreviewRefresh').onclick=updateActualPreview;
-  el('jcsPreviewModal').addEventListener('click',function(e){ if(e.target===this) this.hidden=true; });
-  [].slice.call(document.querySelectorAll('[data-preview-width]')).forEach(function(btn){
-    btn.onclick=function(){ setPreviewWidth(this.getAttribute('data-preview-width')); };
-  });
-
-  el('jcsNew').onclick = function(){
-    if(!window.confirm('Clear this project and start with one blank banner? Your current saved version will remain until you click Save.')) return;
-    slides=[defaults()]; active=0; mode='desktop'; selectedStop=0;
-    loadFields(); renderAll(); markDirty();
-  };
-
-  // ---------- project/code import ----------
-  function copyText(text, btn){
-    navigator.clipboard.writeText(text).then(function(){
-      var old = btn.textContent; btn.textContent = 'Copied!';
-      setTimeout(function(){ btn.textContent = old; }, 1400);
-    });
-  }
-
-  function closeImport(){ el('jcsImportModal').hidden = true; }
-  el('jcsOpenImport').onclick = function(){
-    el('jcsImportMsg').textContent = '';
-    el('jcsImportMsg').className = 'jcs-import-msg';
-    el('jcsImportModal').hidden = false;
-    setTimeout(function(){ el('jcsImportArea').focus(); }, 0);
-  };
-  el('jcsCloseImport').onclick = closeImport;
-  el('jcsCancelImport').onclick = closeImport;
-  el('jcsImportModal').addEventListener('click', function(e){ if(e.target === el('jcsImportModal')) closeImport(); });
-  el('jcsCopyProject').onclick = function(){ copyText(JSON.stringify(slides), this); };
-  el('jcsCopyTop').onclick = function(){ copyText(el('jcsCodeOutput').value, this); };
 
   function textOf(node){ return node ? node.textContent.trim() : ''; }
   function importLegacyCode(raw){
@@ -1323,83 +408,770 @@ googleFontsLink() + '\n' +
     });
   }
 
-  el('jcsLoadImport').onclick = function(){
-    var raw = el('jcsImportArea').value.trim();
-    var msg = el('jcsImportMsg');
-    if(!raw){ msg.textContent = 'Paste code or project JSON first.'; return; }
-    try{
-      var parsed;
-      var marker = raw.match(/(?:JCS-PROJECT-DATA|WABB-DATA)-BEGIN\s*([\s\S]*?)\s*(?:JCS-PROJECT-DATA|WABB-DATA)-END/);
-      if(marker){
-        parsed = JSON.parse(marker[1]);
-      } else {
-        try { parsed = JSON.parse(raw); }
-        catch(jsonError){ parsed = importLegacyCode(raw); }
-      }
-      if(parsed && !Array.isArray(parsed) && Array.isArray(parsed.slides)) parsed = parsed.slides;
-      if(!Array.isArray(parsed) || !parsed.length) throw new Error('Empty project');
-      slides = parsed.map(function(slide){ var merged=Object.assign(defaults(), slide); merged.heading=normalizeStoredText(merged.heading); merged.subheading=normalizeStoredText(merged.subheading); merged.eyebrow=normalizeStoredText(merged.eyebrow); merged.buttonText=normalizeStoredText(merged.buttonText); return merged; });
-      active = 0; mode = 'desktop'; selectedStop = 0;
-      loadFields(); renderAll(); markDirty();
-      msg.className = 'jcs-import-msg success';
-      msg.textContent = 'Loaded '+slides.length+' banner(s). Click Save to store the project in WordPress.';
-      setTimeout(closeImport, 1100);
-    } catch(err){
-      msg.className = 'jcs-import-msg error';
-      msg.textContent = "Couldn't read that code. Paste code exported by this studio, Wheels Banner Studio code, or project JSON.";
-    }
-  };
-
-  window.addEventListener('resize', function(){ renderCanvas(); });
-
-  // ---------- quick-pick colour swatches ----------
-  var SWATCH_COLORS = String(STUDIO.swatches || '#000000,#404040,#737373,#a6a6a6,#d9d9d9,#ffffff,#e53935,#fb8c00,#fdd835,#43a047,#26c6da,#1e88e5,#3157df,#d81b60').split(',').map(function(x){return x.trim();}).filter(Boolean);
-  root.querySelectorAll('input[type=color]').forEach(function(input){
-    var row = document.createElement('div'); row.className = 'jcs-swatch-row';
-    SWATCH_COLORS.forEach(function(color){
-      var sw = document.createElement('button'); sw.type = 'button'; sw.className = 'jcs-swatch'; sw.style.background = color; sw.title = color;
-      sw.onclick = function(){ input.value = color; input.dispatchEvent(new Event('input', {bubbles:true})); input.dispatchEvent(new Event('change', {bubbles:true})); };
-      row.appendChild(sw);
-    });
-    input.insertAdjacentElement('afterend', row);
-  });
-
-  // ---------- title, save, unload guard ----------
-  el('jcsTitle').value = DATA.title || '';
-  el('jcsTitle').addEventListener('input', markDirty);
-
-  function doSave(){
-    var status = el('jcsStatus'); var btn = el('jcsSave');
-    btn.disabled = true; status.textContent = 'Saving…';
-    fetch(DATA.restUrl, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': DATA.nonce },
-      body: JSON.stringify({ data: slides, title: el('jcsTitle').value, localeOps: localeOps })
-    }).then(function(r){
+  function renderAll(){ refresh(); }
+  // =====================================================================
+  // NEW EDITOR UI (redesign). Everything above this line is the unchanged
+  // banner engine from the WordPress Code Studio (data model, embed code,
+  // import), so exported code is identical to what is already on websites.
+  // =====================================================================
+  function el(id){ return document.getElementById(id); }
+  // ---------- WordPress: save and translate through the plugin's REST routes ----------
+  if(!DATA.save && DATA.restUrl){
+    DATA.save = function(payload){
+      return fetch(DATA.restUrl, {
+        method:'POST', credentials:'same-origin',
+        headers:{ 'Content-Type':'application/json', 'X-WP-Nonce':DATA.nonce },
+        body: JSON.stringify({ data:payload.data, title:payload.title, localeOps:localeOps })
+      }).then(function(r){
         return r.text().then(function(text){
-          var parsed; try { parsed = JSON.parse(text); } catch(e) { parsed = null; }
-          if(!r.ok){
-            var msg = (parsed && parsed.message) ? parsed.message : ('HTTP ' + r.status);
-            console.error('JCS save failed', r.status, text);
-            throw new Error(msg);
-          }
+          var parsed; try { parsed = JSON.parse(text); } catch(e){ parsed = null; }
+          if(!r.ok){ console.error('JCS save failed', r.status, text); throw new Error(parsed && parsed.message ? parsed.message : 'HTTP '+r.status); }
+          localeOps = [];
           return parsed;
         });
-      })
-      .then(function(){ dirty = false; localeOps = []; status.textContent = 'All changes saved'; btn.disabled = false; })
-      .catch(function(err){ status.textContent = 'Save failed: ' + err.message + ' (see console)'; btn.disabled = false; });
+      });
+    };
   }
-  el('jcsSave').onclick = doSave;
+  if(!DATA.translate && DATA.translateUrl && DATA.language === 'fr'){
+    DATA.translate = function(){
+      return fetch(DATA.translateUrl, { method:'POST', credentials:'same-origin', headers:{ 'Content-Type':'application/json', 'X-WP-Nonce':DATA.nonce }, body: JSON.stringify({ sourceLanguage:'en' }) })
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(function(res){ if(!res.data) throw new Error(res.message || 'No translation returned'); return res.data.map(function(x){ return Object.assign(defaults(), x); }); });
+    };
+  }
+  var root = document.getElementById('jcs-root');
+  var PW = 345;                 // real phone banner width on wheelsauto.com
+  var deskW = 893;              // homepage hero slot; can switch to full width
+  var view = 'both'; try { view = localStorage.getItem('cs-view') || 'both'; } catch(e){}
+  var sel = 'content', panel = 'piece', links = {}, openGroups = {}, gDev = 'd';
+  var FONTS = fontLibrary();
+  var WEIGHTS = [['300','300 Light'],['400','400 Regular'],['500','500 Medium'],['600','600 Semi-bold'],['700','700 Bold'],['800','800 Extra-bold'],['900','900 Black']];
+  var BLENDS = ['normal','multiply','screen','overlay','darken','lighten','color-dodge','color-burn','hard-light','soft-light','difference','exclusion','hue','saturation','color','luminosity'];
+  var LR = [['left','Left'],['center','Center'],['right','Right']], TB = [['flex-start','Top'],['center','Middle'],['flex-end','Bottom']];
 
-  window.addEventListener('beforeunload', function(e){ if(!dirty) return; e.preventDefault(); e.returnValue=''; });
+  function markDirty(){ dirty = true; var st = el('csStatus'); if(st) st.textContent = 'Unsaved changes'; }
+  function cur(){ return slides[active]; }
+  function toast(msg){ var t = el('csToast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function(){ t.style.display = 'none'; }, 2200); }
+  function copyText(text, label){
+    var done = function(){ toast(label + ' copied'); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done, function(){ fallback(); }); } else fallback();
+    function fallback(){ var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ toast('Copy failed'); } ta.remove(); }
+  }
 
-  document.addEventListener('keydown', function(e){
-    if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); doSave(); }
+  // ---------- controls, grouped by the piece of the banner you are editing ----------
+  // d = desktop key, p = phone key (shown side by side, with a link so Phone can follow Desktop)
+  var PIECES = {
+    eyebrow:{name:'Red label', hint:'The small label above the heading', groups:[
+      ['Text',[{d:'eyebrow',t:'text',l:'Label text'}]],
+      ['Font',[{d:'eyebrowFont',t:'font',l:'Font'},{d:'eyebrowWeight',t:'weight',l:'Weight'},{d:'eyebrowSize',p:'mobileEyebrowSize',t:'range',l:'Size',min:8,max:180,u:'px'},{d:'eyebrowLetterSpacing',p:'mobileEyebrowLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
+      ['Colours',[{d:'eyebrowColor',t:'color',l:'Text colour'},{d:'eyebrowBgEnabled',t:'check',l:'Show background'},{d:'eyebrowBg',t:'color',l:'Background colour'},{d:'eyebrowOpacity',t:'range',l:'Background opacity',min:0,max:100,u:'%'}]],
+      ['Box',[{d:'eyebrowPadX',t:'range',l:'Padding left / right',min:0,max:40,u:'px'},{d:'eyebrowPadY',t:'range',l:'Padding top / bottom',min:0,max:24,u:'px'},{d:'eyebrowRadius',t:'range',l:'Corner radius',min:0,max:30,u:'px'}]],
+      ['Shadow',[{d:'eyebrowShadowEnabled',t:'check',l:'Add drop shadow'},{d:'eyebrowShadowColor',t:'color',l:'Shadow colour'},{d:'eyebrowShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'eyebrowShadowBlur',t:'range',l:'Blur',min:0,max:60,u:'px'},{d:'eyebrowShadowY',t:'range',l:'Offset',min:0,max:30,u:'px'}]],
+      ['Spacing',[{d:'gapEyebrow',p:'mobileGapEyebrow',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
+    ]},
+    heading:{name:'Heading', hint:'The big title', groups:[
+      ['Text',[{d:'heading',t:'area',l:'Heading'}]],
+      ['Font',[{d:'headingFont',t:'font',l:'Font'},{d:'headingWeight',t:'weight',l:'Weight'},{d:'headingColor',t:'color',l:'Colour'},{d:'headingSize',p:'mobileHeadingSize',t:'range',l:'Size',min:8,max:220,u:'px'},{d:'headingLineHeight',t:'range',l:'Line height',min:.7,max:2.4,step:.05},{d:'headingLetterSpacing',p:'mobileHeadingLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
+      ['Spacing',[{d:'gapHeading',p:'mobileGapHeading',t:'range',l:'Space below',min:0,max:50,u:'px'}]]
+    ]},
+    sub:{name:'Small text', hint:'The line(s) under the heading', groups:[
+      ['Text',[{d:'subheading',t:'area',l:'Small text'}]],
+      ['Font',[{d:'bodyFont',t:'font',l:'Font'},{d:'bodyWeight',t:'weight',l:'Weight'},{d:'subColor',t:'color',l:'Colour'},{d:'subSize',p:'mobileSubSize',t:'range',l:'Size',min:8,max:140,u:'px'},{d:'subLineHeight',t:'range',l:'Line height',min:.7,max:2.8,step:.05},{d:'subLetterSpacing',p:'mobileSubLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
+      ['Spacing',[{d:'gapSub',p:'mobileGapSub',t:'range',l:'Space below',min:0,max:60,u:'px'}]]
+    ]},
+    button:{name:'Button', hint:'The button', groups:[
+      ['Text & link',[{d:'buttonText',t:'text',l:'Button text'},{d:'buttonUrl',t:'url',l:'Link'},{d:'buttonNewTab',t:'check',l:'Open in a new tab'}]],
+      ['Font',[{d:'buttonFont',t:'font',l:'Font'},{d:'buttonWeight',t:'weight',l:'Weight'},{d:'buttonFontSize',p:'mobileButtonFontSize',t:'range',l:'Size',min:8,max:100,u:'px'},{d:'buttonLetterSpacing',p:'mobileButtonLetterSpacing',t:'range',l:'Letter spacing',min:-5,max:30,step:.5,u:'px'}]],
+      ['Colours',[{d:'buttonColor',t:'color',l:'Text colour'},{d:'buttonBgEnabled',t:'check',l:'Show background'},{d:'buttonBg',t:'color',l:'Background colour'},{d:'buttonOpacity',t:'range',l:'Background opacity',min:0,max:100,u:'%'}]],
+      ['Shape',[{d:'buttonPadX',t:'range',l:'Padding left / right',min:0,max:60,u:'px'},{d:'buttonHeight',t:'range',l:'Height',min:28,max:80,u:'px'},{d:'buttonRadius',t:'range',l:'Corner radius',min:0,max:40,u:'px'},{d:'buttonWidth',p:'mobileButtonWidth',t:'range',l:'Width (0 = fit text)',min:0,max:1000,step:10,u:'px'}]],
+      ['Hover',[{d:'buttonHoverEnabled',t:'check',l:'Change colour on hover'},{d:'buttonHoverBg',t:'color',l:'Hover background'},{d:'buttonHoverColor',t:'color',l:'Hover text'}]],
+      ['Shadow',[{d:'buttonShadowEnabled',t:'check',l:'Add drop shadow'},{d:'buttonShadowColor',t:'color',l:'Shadow colour'},{d:'buttonShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'buttonShadowBlur',t:'range',l:'Blur',min:0,max:60,u:'px'},{d:'buttonShadowY',t:'range',l:'Offset',min:0,max:30,u:'px'}]]
+    ]},
+    content:{name:'Text box', hint:'Label, heading, small text and button together', groups:[
+      ['Phone shortcut',[{t:'phonePlace'}]],
+      ['Placement',[{t:'lineup'},{d:'contentSide',p:'mobileContentSide',t:'seg',o:LR,l:'Box position'},{d:'contentAlign',p:'mobileContentAlign',t:'seg',o:TB,l:'Vertical'},{d:'textAlign',p:'mobileTextAlign',t:'seg',o:LR,l:'Text alignment'},{d:'contentWidth',p:'mobileContentWidth',t:'range',l:'Box width',min:120,max:1900,step:10,u:'px'},{d:'contentPadding',p:'mobileContentPadding',t:'range',l:'Space from edge',min:0,max:140,step:2,u:'px'},{d:'contentShiftX',p:'mobileContentShiftX',t:'range',l:'Move left / right',min:-1000,max:1000,u:'px'},{d:'contentShiftY',p:'mobileContentShiftY',t:'range',l:'Move up / down',min:-1000,max:1000,u:'px'},{d:'showContent',p:'mobileShowContent',t:'check',l:'Show text'}]],
+      ['Background panel',[{d:'contentBgEnabled',p:'mobileContentBgEnabled',t:'check',l:'Panel behind the text'},{d:'contentBgColor',p:'mobileContentBgColor',t:'color',l:'Colour'},{d:'contentBgOpacity',p:'mobileContentBgOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'contentBgPadding',p:'mobileContentBgPadding',t:'range',l:'Padding',min:0,max:80,step:2,u:'px'},{d:'contentBgRadius',p:'mobileContentBgRadius',t:'range',l:'Corner radius',min:0,max:40,u:'px'}]],
+      ['Panel shadow',[{d:'contentBgShadowEnabled',p:'mobileContentBgShadowEnabled',t:'check',l:'Drop shadow'},{d:'contentBgShadowColor',p:'mobileContentBgShadowColor',t:'color',l:'Shadow colour'},{d:'contentBgShadowOpacity',p:'mobileContentBgShadowOpacity',t:'range',l:'Opacity',min:0,max:100,u:'%'},{d:'contentBgShadowBlur',p:'mobileContentBgShadowBlur',t:'range',l:'Blur',min:0,max:80,step:2,u:'px'},{d:'contentBgShadowY',p:'mobileContentBgShadowY',t:'range',l:'Offset',min:0,max:40,u:'px'}]]
+    ]},
+    bg:{name:'Background', hint:'Pictures, links, colour, overlay and gradient', groups:[
+      ['Pictures',[{t:'imgs'},{d:'altText',t:'text',l:'Picture description (alt text)'}]],
+      ['Picture position',[{d:'desktopFit',t:'select',o:[['width','100% width (designed banners)'],['cover','Fill / crop'],['contain','Fit whole picture'],['custom','Custom width %']],l:'Desktop sizing'},{d:'desktopX',t:'range',l:'Desktop: left / right',min:-100,max:200,u:'%'},{d:'desktopY',t:'range',l:'Desktop: up / down',min:-100,max:200,u:'%'},{d:'desktopZoom',t:'range',l:'Desktop: size (Custom width)',min:10,max:400,u:'%'},{d:'mobileX',t:'range',l:'Phone: left / right',min:-100,max:200,u:'%'},{d:'mobileY',t:'range',l:'Phone: up / down',min:-100,max:200,u:'%'},{d:'mobileWidth',t:'range',l:'Phone: picture size',min:10,max:400,u:'%'},{d:'desktopAttachment',t:'select',o:[['scroll','Scroll (normal)'],['fixed','Fixed (parallax)']],l:'Scrolling'}]],
+      ['Click anywhere on the banner',[{d:'desktopBgLink',p:'mobileBgLink',t:'urlpair',l:'Banner link'},{d:'desktopBgNewTab',p:'mobileBgNewTab',t:'check',l:'Open in a new tab'}]],
+      ['Colour & overlay',[{d:'bgColor',t:'color',l:'Base colour (behind the picture)'},{d:'overlayType',t:'select',o:[['none','Off'],['color','Colour'],['image','Image']],l:'Overlay'},{d:'overlayColor',t:'color',l:'Overlay colour'},{d:'overlayImage',t:'img',l:'Overlay image'},{d:'overlayOpacity',t:'range',l:'Overlay opacity',min:0,max:100,u:'%'},{d:'overlayBlendMode',t:'select',o:BLENDS.map(function(b){return [b,b];}),l:'Blend mode'}]],
+      ['Gradient (shading behind the text)',[{t:'gradient'}]]
+    ]}
+  };
+  var SLIDER = [
+    ['Size',[{d:'desktopHeight',t:'number',l:'Desktop height (px)'},{d:'mobileHeight',t:'number',l:'Phone height (px)'},{d:'mobileBreakpoint',t:'number',l:'Use the phone layout at this width or less (px)'}]],
+    ['Corners',[{d:'bannerRadius',t:'number',l:'Corner radius, desktop (px)'},{d:'mobileBannerRadius',t:'number',l:'Corner radius, phone (px). Blank = same as desktop'}]],
+    ['Autoplay',[{d:'autoplay',t:'number',l:'Time per slide (ms)'},{d:'pauseHover',t:'check',l:'Pause when the mouse is on it'}]],
+    ['Arrows & dashes',[{d:'arrowBg',t:'color',l:'Arrow background'},{d:'arrowBgOpacity',t:'range',l:'Arrow background opacity',min:0,max:100,u:'%'},{d:'arrowIconColor',t:'color',l:'Arrow icon'},{d:'arrowBorderColor',t:'color',l:'Arrow border'},{d:'arrowBorderOpacity',t:'range',l:'Arrow border opacity',min:0,max:100,u:'%'},{d:'dashColor',t:'color',l:'Dash / progress colour'}]],
+    ['Website',[{d:'resetHostPadding',t:'check',l:'Remove Magento page padding (full-width pages)'}]]
+  ];
+  // Banner-wide settings live on every slide (the exporter reads them from slide 1).
+  var SLIDER_KEYS = ['desktopHeight','mobileHeight','mobileBreakpoint','bannerRadius','mobileBannerRadius','autoplay','pauseHover','arrowBg','arrowBgOpacity','arrowIconColor','arrowBorderColor','arrowBorderOpacity','dashColor','resetHostPadding'];
+
+  // ---------- shell ----------
+  var LANGS = [['en','EN',DATA.englishUrl],['fr','FR',DATA.frenchUrl],['us','USA',DATA.usaUrl]];
+  root.innerHTML =
+    '<div class="cs">' +
+      '<header class="cs-top">' +
+        '<a class="cs-back" href="'+esc(DATA.listUrl||'#')+'" title="Back to banners">&#8592;</a>' +
+        '<div class="cs-name"><input id="csTitle" aria-label="Banner name"><div class="cs-status" id="csStatus">All changes saved</div></div>' +
+        '<nav class="cs-langs">' + LANGS.map(function(l){ return '<a href="'+esc(l[2]||'#')+'" class="'+(DATA.language===l[0]?'on':'')+'">'+l[1]+'</a>'; }).join('') + '</nav>' +
+        ((DATA.language==='fr' && DATA.translate) ? '<button class="cs-tb" id="csTranslate">Translate EN → FR</button>' : '') +
+        '<div class="cs-sp"></div>' +
+        '<button class="cs-tb" id="csLive">Live preview</button>' +
+        '<div class="cs-menu" id="csMore"><button class="cs-tb" id="csMoreBtn">More ▾</button><div class="cs-pop">' +
+          '<button id="csNew">New blank</button><button id="csImport">Load code / project</button><button id="csCopyJson">Copy project JSON</button><button id="csHelp">What changed?</button>' +
+        '</div></div>' +
+        '<button class="cs-tb" id="csCopyCode">Copy embed code</button>' +
+        '<button class="cs-tb cs-pri" id="csSave">Save</button>' +
+      '</header>' +
+      '<div class="cs-app">' +
+        '<aside class="cs-rail"><div class="cs-cap">Slides</div><div id="csSlides"></div><button class="cs-add" id="csAdd">+ Add slide</button>' +
+          '<div class="cs-cap">Whole slider</div><button class="cs-railbtn" id="csSliderBtn">Slider settings <span>›</span></button></aside>' +
+        '<main class="cs-stage" id="csStage">' +
+          '<div class="cs-viewbar"><span>Show</span><div class="cs-seg" id="csView"><button data-v="desktop">Desktop</button><button data-v="phone">Phone</button><button data-v="both">Both</button></div></div>' +
+          '<div class="cs-pvs">' +
+            '<div class="cs-pv" id="csDesk"><div class="cs-pvh"><b>Desktop</b><div class="cs-seg cs-w" id="csDeskW"><button data-w="893">Hero 893</button><button data-w="1290">Full width 1290</button></div><span id="csDLbl"></span></div><div class="cs-box" id="csDBox"><iframe id="csDFrame" title="Desktop preview"></iframe></div></div>' +
+            '<div class="cs-pv cs-phone" id="csPhone"><div class="cs-pvh"><b>Phone</b><span id="csPLbl"></span></div><div class="cs-box" id="csPBox"><iframe id="csPFrame" title="Phone preview"></iframe></div></div>' +
+          '</div>' +
+          '<div class="cs-hint"><b>Click any piece of the banner to edit it. Drag it to move it.</b> Desktop and Phone are always both on screen, built from the same code you copy into the website.</div>' +
+          '<details class="cs-code"><summary>Embed code</summary><textarea id="csCode" readonly></textarea><button class="cs-tb cs-pri" id="csCopyCode2">Copy embed code</button></details>' +
+        '</main>' +
+        '<aside class="cs-side" id="csSide"></aside>' +
+      '</div>' +
+      '<div class="cs-modal" id="csImportM"><div class="cs-mb"><h3>Load code or project</h3><p>Paste embed code from this studio, Wheels Banner Studio code, or project JSON.</p><textarea id="csImportArea"></textarea><div class="cs-msg" id="csImportMsg"></div><div class="cs-acts"><button class="cs-tb" data-close>Cancel</button><button class="cs-tb cs-pri" id="csDoImport">Load into studio</button></div></div></div>' +
+      '<div class="cs-modal" id="csHelpM"><div class="cs-mb"><h3>What changed (every control is still here)</h3><ul>' +
+        '<li><b>Click the piece you want to change</b> (Red label, Heading, Small text, Button, Text box, Background) and all its controls show in one place.</li>' +
+        '<li><b>Drag a piece in either preview to move it.</b></li>' +
+        '<li><b>Desktop and Phone side by side</b>, always, at real sizes (phone 345px like on wheelsauto.com). Both are built from the exact embed code.</li>' +
+        '<li><b>Size and position controls show Desktop and Phone together.</b> Turn on 🔗 and Phone follows Desktop.</li>' +
+        '<li><b>Text box → "Under the picture"</b> puts phone text below the photo in one click.</li>' +
+        '<li><b>Apply to all slides</b> copies a piece\'s look (not its text or links) to every slide.</li>' +
+        '<li><b>Warning</b> when a slide has no phone picture.</li>' +
+        '<li><b>Slider settings</b> (heights, autoplay, corners, breakpoint, arrows) in one place.</li>' +
+      '</ul><div class="cs-acts"><button class="cs-tb cs-pri" data-close>Got it</button></div></div></div>' +
+      '<div class="cs-toast" id="csToast"></div>' +
+    '</div>';
+
+  // ---------- previews: real embed code, one slide, at real sizes ----------
+  var FRAME_CSS = '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}' +
+    '.cs-piece{cursor:pointer}.csx-content{cursor:move}.csx-bg,.csx-scrim{cursor:move}.cs-piece:hover{outline:1px dashed #8aa4ff;outline-offset:2px}.cs-sel{outline:2px solid #2f5bea!important;outline-offset:2px}' +
+    'body.cs-dragging,body.cs-dragging *{cursor:grabbing!important}</style>';
+  function singleSlideCode(){
+    var all = slides, idx = active;
+    bannerRoot = all[0]; slides = [all[idx]]; active = 0;
+    var code;
+    try { code = generateCode(); } finally { slides = all; active = idx; bannerRoot = null; }
+    return code;
+  }
+  function writeFrame(frame, bodyWidth, phone){
+    var doc = frame.contentDocument;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'+FRAME_CSS+'</head><body style="width:'+bodyWidth+'px">'+singleSlideCode()+'</body></html>');
+    doc.close();
+    wireFrame(frame, phone);
+  }
+  var PIECE_SEL = [['.csx-eyebrow','eyebrow'],['.csx-heading','heading'],['.csx-sub','sub'],['.csx-button','button'],['.csx-content','content']];
+  function pieceOf(target){
+    if(!target || !target.closest) return null;
+    for(var i=0;i<PIECE_SEL.length;i++){ var n = target.closest(PIECE_SEL[i][0]); if(n) return {key:PIECE_SEL[i][1], node:n}; }
+    return null;
+  }
+  // The area the text really covers (old per-piece nudges can push pieces outside the box itself)
+  function textRect(doc){
+    var box = doc.querySelector('.csx-content'); if(!box) return null;
+    var r = null;
+    box.querySelectorAll('.csx-eyebrow,.csx-heading,.csx-sub,.csx-button').forEach(function(n){
+      var b = n.getBoundingClientRect(); if(!b.width || !b.height || !n.textContent.trim()) return;
+      r = r ? { left:Math.min(r.left,b.left), top:Math.min(r.top,b.top), right:Math.max(r.right,b.right), bottom:Math.max(r.bottom,b.bottom) } : { left:b.left, top:b.top, right:b.right, bottom:b.bottom };
+    });
+    if(!r){ var bb = box.getBoundingClientRect(); r = { left:bb.left, top:bb.top, right:bb.right, bottom:bb.bottom }; }
+    r.width = r.right - r.left; r.height = r.bottom - r.top;
+    return r;
+  }
+  // ---------- picture on the canvas: where it sits and how big it is ----------
+  var IMG_SIZE = {};
+  function natSize(url){
+    if(!url) return null;
+    if(IMG_SIZE[url]) return IMG_SIZE[url];
+    if(IMG_SIZE[url] === undefined){
+      IMG_SIZE[url] = false;
+      var im = new Image();
+      im.onload = function(){ IMG_SIZE[url] = { w:im.naturalWidth, h:im.naturalHeight }; ['csDFrame','csPFrame'].forEach(function(id){ var d = el(id).contentDocument; if(d && d.querySelector('.csx-banner-root')) markSel(d); }); };
+      im.src = url;
+    }
+    return null;
+  }
+  function imgGeom(s, phone, W, H){
+    var url = phone ? (s.mobileImage || s.desktopImage) : s.desktopImage, nat = natSize(url);
+    if(!nat || !nat.w || !nat.h) return null;
+    var w, X, Y;
+    if(phone){ w = W * (Number(s.mobileWidth)||100) / 100; X = s.mobileX; Y = s.mobileY; }
+    else {
+      var fit = s.desktopFit;
+      if(fit === 'width') w = W;
+      else if(fit === 'contain') w = Math.min(W/nat.w, H/nat.h) * nat.w;
+      else if(fit === 'custom') w = W * (Number(s.desktopZoom)||100) / 100;
+      else w = Math.max(W/nat.w, H/nat.h) * nat.w;
+      X = s.desktopX; Y = s.desktopY;
+    }
+    var h = w * nat.h / nat.w;
+    X = Number(X)||0; Y = Number(Y)||0;
+    return { W:W, H:H, w:w, h:h, ratio:nat.h/nat.w, left:(W-w)*X/100, top:(H-h)*Y/100, X:X, Y:Y };
+  }
+  // turn a picture box (left/top/width) back into Code Studio's position % and size %
+  function imgValues(g, phone, resized){
+    var X = Math.abs(g.W - g.w) > .5 ? g.left / (g.W - g.w) * 100 : g.X;
+    var Y = Math.abs(g.H - g.h) > .5 ? g.top / (g.H - g.h) * 100 : g.Y;
+    var v = { X:Math.round(Math.max(-500, Math.min(600, X))), Y:Math.round(Math.max(-500, Math.min(600, Y))) };
+    if(resized) v.size = Math.max(5, Math.round(g.w / g.W * 100));
+    return v;
+  }
+  function saveImg(s, phone, v){
+    if(phone){ s.mobileX = v.X; s.mobileY = v.Y; if(v.size != null) s.mobileWidth = v.size; }
+    else { s.desktopX = v.X; s.desktopY = v.Y; if(v.size != null){ s.desktopFit = 'custom'; s.desktopZoom = v.size; } }
+  }
+  function showImg(node, phone, v){
+    if(phone){ node.style.setProperty('--jcs-mobile-bg-pos', v.X+'% '+v.Y+'%'); if(v.size != null) node.style.setProperty('--jcs-mobile-bg-size', v.size+'% auto'); }
+    else { node.style.backgroundPosition = v.X+'% '+v.Y+'%'; if(v.size != null) node.style.backgroundSize = v.size+'% auto'; }
+  }
+  function drawImgFrame(doc, root, g){
+    var b = doc.createElement('div');
+    b.className = 'cs-selbox';
+    b.style.cssText = 'position:absolute;z-index:19;pointer-events:none;outline:2px solid #2f5bea;left:'+g.left+'px;top:'+g.top+'px;width:'+g.w+'px;height:'+g.h+'px';
+    [['tl','0','0','nwse'],['tr','100%','0','nesw'],['bl','0','100%','nesw'],['br','100%','100%','nwse']].forEach(function(c){
+      var h = doc.createElement('div');
+      h.setAttribute('data-corner', c[0]);
+      h.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:#fff;border:2px solid #2f5bea;border-radius:2px;pointer-events:auto;cursor:'+c[3]+'-resize;left:'+c[1]+';top:'+c[2];
+      b.appendChild(h);
+    });
+    root.appendChild(b);
+  }
+  function markSel(doc){
+    doc.querySelectorAll('.cs-sel').forEach(function(n){ n.classList.remove('cs-sel'); });
+    doc.querySelectorAll('.cs-selbox').forEach(function(n){ n.remove(); });
+    if(panel !== 'piece') return;
+    if(sel === 'content'){
+      var root = doc.querySelector('.csx-banner-root'), r = textRect(doc); if(!root || !r) return;
+      var rr = root.getBoundingClientRect(), b = doc.createElement('div');
+      b.className = 'cs-selbox';
+      b.style.cssText = 'position:absolute;z-index:19;pointer-events:none;outline:2px solid #2f5bea;outline-offset:4px;left:'+(r.left-rr.left)+'px;top:'+(r.top-rr.top)+'px;width:'+r.width+'px;height:'+r.height+'px';
+      root.appendChild(b);
+      return;
+    }
+    if(sel === 'bg'){
+      var rootB = doc.querySelector('.csx-banner-root'); if(!rootB) return;
+      var gB = imgGeom(cur(), !!doc.__phone, rootB.clientWidth, rootB.clientHeight);
+      if(gB) drawImgFrame(doc, rootB, gB);
+      return;
+    }
+    PIECE_SEL.forEach(function(p){ if(p[1] === sel) doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-sel'); }); });
+  }
+  function wireFrame(frame, phone){
+    var doc = frame.contentDocument;
+    doc.__phone = phone;
+    PIECE_SEL.forEach(function(p){ if(p[1] !== 'content') doc.querySelectorAll(p[0]).forEach(function(n){ n.classList.add('cs-piece'); }); });
+    markSel(doc);
+    // never follow links inside the editor preview
+    doc.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('a')) e.preventDefault(); }, true);
+    var drag = null, SNAP = 8;
+    function guide(root, vertical, pos, on){
+      var g = doc.createElement('div');
+      g.className = 'cs-guide';
+      g.style.cssText = 'position:absolute;z-index:20;pointer-events:none;' + (vertical ? 'top:0;bottom:0;width:0;left:'+pos+'px;border-left:1px '+(on?'solid #ff2d87':'dashed rgba(255,255,255,.55)') : 'left:0;right:0;height:0;top:'+pos+'px;border-top:1px '+(on?'solid #ff2d87':'dashed rgba(255,255,255,.55)')) + ';box-shadow:0 0 0 .5px rgba(0,0,0,.35)';
+      root.appendChild(g);
+    }
+    function clearGuides(){ doc.querySelectorAll('.cs-guide').forEach(function(g){ g.remove(); }); }
+    doc.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      var root = e.target.closest && e.target.closest('.csx-banner-root');
+      if(!root || e.target.closest('.jcsx-nav')) return;
+      var p = pieceOf(e.target);
+      e.preventDefault();
+      // empty space inside the text box (it can be much bigger than the visible text) belongs to the picture
+      if(p && p.key === 'content'){
+        var tr = textRect(doc);
+        if(!tr || e.clientX < tr.left - 6 || e.clientX > tr.right + 6 || e.clientY < tr.top - 6 || e.clientY > tr.bottom + 6) p = null;
+      }
+      if(!p){
+        // the picture: drag to move, drag a corner to resize
+        var bgNode = root.querySelector('.csx-bg');
+        if(sel !== 'bg' || panel !== 'piece') select('bg', true);
+        var g0 = imgGeom(cur(), phone, root.clientWidth, root.clientHeight);
+        if(!g0 || !bgNode) return;
+        var corner = e.target.getAttribute && e.target.getAttribute('data-corner');
+        drag = { img:true, corner:corner, x:e.clientX, y:e.clientY, g0:g0, node:bgNode, root:root, moved:false, rr:root.getBoundingClientRect() };
+        return;
+      }
+      var box = doc.querySelector('.csx-content');
+      var xk = phone ? 'mobileContentShiftX' : 'contentShiftX', yk = phone ? 'mobileContentShiftY' : 'contentShiftY';
+      var rr = root.getBoundingClientRect(), cr = textRect(doc);
+      var pad = Number(phone ? (cur().mobileContentPadding != null ? cur().mobileContentPadding : cur().contentPadding) : cur().contentPadding) || 0;
+      drag = { x:e.clientX, y:e.clientY, ox:Number(cur()[xk])||0, oy:Number(cur()[yk])||0, xk:xk, yk:yk, box:box, root:root, key:p.key, moved:false,
+        rr:rr, cr:cr, pad:pad,
+        // the whole box must stay inside the banner
+        minX: rr.left - cr.left, maxX: rr.right - cr.right, minY: rr.top - cr.top, maxY: rr.bottom - cr.bottom };
+    });
+    doc.addEventListener('mousemove', function(e){
+      if(!drag) return;
+      if(drag.img){ moveImg(e); return; }
+      var dx = Math.round(e.clientX - drag.x), dy = Math.round(e.clientY - drag.y);
+      if(!drag.moved && Math.abs(dx)+Math.abs(dy) < 4) return;
+      if(!drag.moved){ drag.moved = true; doc.body.classList.add('cs-dragging'); if(sel !== 'content' || panel !== 'piece') select('content', true); }
+      var rr = drag.rr, cr = drag.cr;
+      dx = Math.max(drag.minX, Math.min(drag.maxX, dx));
+      dy = Math.max(drag.minY, Math.min(drag.maxY, dy));
+      // snap targets: banner centre (crosshair) and the side margins
+      var cx = cr.left + cr.width/2 + dx, cy = cr.top + cr.height/2 + dy;
+      var rcx = rr.left + rr.width/2, rcy = rr.top + rr.height/2;
+      var snapV = null, snapH = false;
+      if(Math.abs(cx - rcx) < SNAP){ dx = rcx - (cr.left + cr.width/2); snapV = 'center'; }
+      else if(Math.abs(cr.left + dx - (rr.left + drag.pad)) < SNAP){ dx = rr.left + drag.pad - cr.left; snapV = 'left'; }
+      else if(Math.abs(cr.right + dx - (rr.right - drag.pad)) < SNAP){ dx = rr.right - drag.pad - cr.right; snapV = 'right'; }
+      if(Math.abs(cy - rcy) < SNAP){ dy = rcy - (cr.top + cr.height/2); snapH = true; }
+      dx = Math.round(dx); dy = Math.round(dy);
+      var nx = drag.ox + dx, ny = drag.oy + dy;
+      cur()[drag.xk] = nx; cur()[drag.yk] = ny;
+      if(phone){ drag.box.style.setProperty('--jcs-m-shiftx', nx+'px'); drag.box.style.setProperty('--jcs-m-shifty', ny+'px'); }
+      else drag.box.style.transform = 'translate('+nx+'px,'+ny+'px)';
+      markSel(doc);
+      clearGuides();
+      guide(drag.root, true, rr.width/2, snapV === 'center');
+      guide(drag.root, false, rr.height/2, snapH);
+      if(snapV === 'left') guide(drag.root, true, drag.pad, true);
+      if(snapV === 'right') guide(drag.root, true, rr.width - drag.pad, true);
+    });
+    function moveImg(e){
+      var d = drag, g0 = d.g0, dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if(!d.moved && Math.abs(dx)+Math.abs(dy) < 3) return;
+      d.moved = true; doc.body.classList.add('cs-dragging');
+      var g = { W:g0.W, H:g0.H, ratio:g0.ratio, X:g0.X, Y:g0.Y, w:g0.w, h:g0.h, left:g0.left, top:g0.top };
+      var snapV = null, snapH = null;
+      if(d.corner){
+        // resize, keeping the opposite corner where it is
+        var right = d.corner.charAt(1) === 'r', bottom = d.corner.charAt(0) === 'b';
+        g.w = Math.max(40, g0.w + (right ? dx : -dx)); g.h = g.w * g.ratio;
+        g.left = right ? g0.left : g0.left + g0.w - g.w;
+        g.top = bottom ? g0.top : g0.top + g0.h - g.h;
+        // snap the moving edge to the banner edges
+        if(right && Math.abs(g.left + g.w - g.W) < SNAP){ g.w = g.W - g.left; g.h = g.w * g.ratio; if(!bottom) g.top = g0.top + g0.h - g.h; snapV = 'right'; }
+        if(!right && Math.abs(g.left) < SNAP){ g.w = g0.left + g0.w; g.h = g.w * g.ratio; g.left = 0; if(!bottom) g.top = g0.top + g0.h - g.h; snapV = 'left'; }
+      } else {
+        g.left = g0.left + dx; g.top = g0.top + dy;
+        // crosshair: snap the picture's centre to the banner's centre, and its edges to the banner's edges
+        if(Math.abs(g.left + g.w/2 - g.W/2) < SNAP){ g.left = g.W/2 - g.w/2; snapV = 'center'; }
+        else if(Math.abs(g.left) < SNAP){ g.left = 0; snapV = 'left'; }
+        else if(Math.abs(g.left + g.w - g.W) < SNAP){ g.left = g.W - g.w; snapV = 'right'; }
+        if(Math.abs(g.top + g.h/2 - g.H/2) < SNAP){ g.top = g.H/2 - g.h/2; snapH = 'center'; }
+        else if(Math.abs(g.top) < SNAP){ g.top = 0; snapH = 'top'; }
+        else if(Math.abs(g.top + g.h - g.H) < SNAP){ g.top = g.H - g.h; snapH = 'bottom'; }
+      }
+      var v = imgValues(g, phone, !!d.corner);
+      d.last = v;
+      showImg(d.node, phone, v);
+      markSel(doc);
+      clearGuides();
+      guide(d.root, true, g.W/2, snapV === 'center');
+      guide(d.root, false, g.H/2, snapH === 'center');
+      if(snapV === 'left') guide(d.root, true, 1, true);
+      if(snapV === 'right') guide(d.root, true, g.W - 1, true);
+      if(snapH === 'top') guide(d.root, false, 1, true);
+      if(snapH === 'bottom') guide(d.root, false, g.H - 1, true);
+    }
+    // mouse wheel over the picture = zoom it, keeping its centre in place
+    var wheelTimer = null;
+    doc.addEventListener('wheel', function(e){
+      var root = e.target.closest && e.target.closest('.csx-banner-root');
+      var wp = pieceOf(e.target);
+      if(wp && wp.key === 'content'){ var wr = textRect(doc); if(!wr || e.clientX < wr.left || e.clientX > wr.right || e.clientY < wr.top || e.clientY > wr.bottom) wp = null; }
+      if(!root || wp || sel !== 'bg' || panel !== 'piece') return;
+      var g0 = imgGeom(cur(), phone, root.clientWidth, root.clientHeight), node = root.querySelector('.csx-bg');
+      if(!g0 || !node) return;
+      e.preventDefault();
+      var f = e.deltaY < 0 ? 1.05 : 1/1.05, cx = g0.left + g0.w/2, cy = g0.top + g0.h/2;
+      var g = { W:g0.W, H:g0.H, ratio:g0.ratio, X:g0.X, Y:g0.Y, w:Math.max(40, g0.w * f) };
+      g.h = g.w * g.ratio; g.left = cx - g.w/2; g.top = cy - g.h/2;
+      var v = imgValues(g, phone, true);
+      saveImg(cur(), phone, v); showImg(node, phone, v); markSel(doc); markDirty();
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(function(){ renderSide(); renderPreviews(); renderCode(); }, 350);
+    }, { passive:false });
+    function endDrag(){
+      if(!drag) return;
+      var d = drag; drag = null; doc.body.classList.remove('cs-dragging'); clearGuides();
+      if(d.img){ if(d.moved && d.last){ saveImg(cur(), phone, d.last); markDirty(); renderSide(); renderPreviews(); renderCode(); } return; }
+      if(d.moved){ markDirty(); renderSide(); renderPreviews(); renderCode(); }
+      else select(d.key);   // a click (no drag) opens that piece's controls
+    }
+    doc.addEventListener('mouseup', endDrag);
+    doc.addEventListener('mouseleave', endDrag);
+  }
+  function scalePreviews(){
+    var s0 = slides[0], bs = bannerSettings();
+    var dh = Number(cur().desktopHeight || s0.desktopHeight || 490), ph = Number(cur().mobileHeight || s0.mobileHeight || 620);
+    var stage = el('csStage');
+    var showD = view !== 'phone', showP = view !== 'desktop';
+    el('csDesk').style.display = showD ? '' : 'none';
+    el('csPhone').style.display = showP ? '' : 'none';
+    el('csView').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v') === view); });
+    var avail = stage.clientWidth - 40 - 26 - (showP ? PW + 26 + 18 : 0);
+    if(avail < 320) avail = stage.clientWidth - 40 - 26; // phone wraps underneath
+    var sc = Math.min(1, Math.max(.3, avail / deskW));
+    var vw = Math.max(deskW, bs.breakpoint + 1);   // viewport wider than the breakpoint = desktop layout
+    var df = el('csDFrame');
+    df.style.width = vw+'px'; df.style.height = dh+'px'; df.style.transform = 'scale('+sc+')';
+    el('csDBox').style.width = Math.round(deskW*sc)+'px'; el('csDBox').style.height = Math.round(dh*sc)+'px';
+    var pf = el('csPFrame');
+    pf.style.width = PW+'px'; pf.style.height = ph+'px';
+    el('csPBox').style.width = PW+'px'; el('csPBox').style.height = ph+'px';
+    el('csDLbl').textContent = deskW+' × '+dh + (sc < 1 ? ' · shown at '+Math.round(sc*100)+'%' : '');
+    el('csPLbl').textContent = PW+' × '+ph+' · real phone width';
+    el('csDeskW').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', Number(b.getAttribute('data-w'))===deskW); });
+    return { vw:vw };
+  }
+  var pending = null;
+  function renderPreviews(){
+    if(pending) return;
+    pending = setTimeout(function(){
+      pending = null;
+      scalePreviews();
+      if(view !== 'phone') writeFrame(el('csDFrame'), deskW, false);
+      if(view !== 'desktop') writeFrame(el('csPFrame'), PW, true);
+    }, 16);
+  }
+  function renderCode(){ el('csCode').value = generateCode(); }
+
+  // ---------- slides rail ----------
+  function noPhonePic(s){ return !s.mobileImage || s.mobileImage === s.desktopImage; }
+  function renderRail(){
+    el('csSlides').innerHTML = slides.map(function(s, i){
+      var title = [s.eyebrow, s.heading].filter(Boolean).join(' · ') || 'Untitled slide';
+      return '<div class="cs-sl'+(i===active?' on':'')+'" data-i="'+i+'">' +
+        '<div class="cs-th" style="background-color:'+esc(s.bgColor||'#ddd')+';'+(s.desktopImage?'background-image:url(\''+esc(s.desktopImage)+'\')':'')+'"><b>'+(i+1)+'</b></div>' +
+        '<div class="cs-t">'+esc(title)+'</div>' + (noPhonePic(s) && s.desktopImage ? '<div class="cs-w">⚠ No phone picture</div>' : '') +
+        '<div class="cs-tools"><button data-a="up" title="Move up">↑</button><button data-a="down" title="Move down">↓</button><button data-a="dup">Duplicate</button>'+(slides.length>1?'<button data-a="del">Delete</button>':'')+'</div></div>';
+    }).join('');
+    el('csSliderBtn').classList.toggle('on', panel === 'slider');
+  }
+
+  // ---------- right panel ----------
+  function isLinked(c){
+    var same = JSON.stringify(cur()[c.d]) === JSON.stringify(cur()[c.p]);
+    // linked only while Phone really matches Desktop; any separate phone change unlinks it
+    if(links[c.d] === undefined || !same) links[c.d] = same;
+    return links[c.d];
+  }
+  function rangeInput(c, k, v){
+    return '<div class="cs-rng"><input type="range" data-k="'+k+'" min="'+c.min+'" max="'+c.max+'" step="'+(c.step||1)+'" value="'+(v==null?0:v)+'"><input type="number" data-k="'+k+'" step="'+(c.step||1)+'" value="'+(v==null?'':v)+'"><small>'+(c.u||'')+'</small></div>';
+  }
+  function colorInput(k, v){
+    return '<div class="cs-col"><input type="color" data-k="'+k+'" value="'+esc(/^#[0-9a-f]{6}$/i.test(v||'')?v:'#000000')+'"><input type="text" class="cs-hex" data-k="'+k+'" value="'+esc(v||'')+'" maxlength="7"></div>';
+  }
+  function uploadBtn(k){ return DATA.upload ? '<button class="cs-mini" data-upload="'+k+'">Upload image</button>' : ''; }
+  function ctl(c){
+    var s = cur();
+    if(c.t === 'phonePlace'){
+      return '<div class="cs-f"><span class="cs-lb">Where the text sits on the phone</span><div class="cs-seg" data-place><button data-v="over">On the picture</button><button data-v="under">Under the picture</button></div>' +
+        '<p class="cs-note"><b>Under the picture</b>: puts the phone text at the bottom of the banner, centred, and clears the old one-by-one phone nudges. It does not change your picture, gradient or colours (those are under Background).<br><b>On the picture</b>: puts the text back in the middle.</p></div>';
+    }
+    if(c.t === 'imgs'){
+      var warn = noPhonePic(s) && s.desktopImage ? '<div class="cs-warn"><b>No phone picture.</b> Phones get the wide desktop picture squeezed into a tall screen. Add a tall phone picture.</div>' : '';
+      return warn +
+        '<div class="cs-f"><label>Desktop picture</label><input type="url" data-k="desktopImage" value="'+esc(s.desktopImage)+'" placeholder="https://…">'+uploadBtn('desktopImage')+(s.desktopImage?'<div class="cs-thumb" style="background-image:url(\''+esc(s.desktopImage)+'\')"></div>':'')+'</div>' +
+        '<div class="cs-f"><label>Phone picture</label><input type="url" data-k="mobileImage" value="'+esc(s.mobileImage)+'" placeholder="https://…">'+uploadBtn('mobileImage')+((s.mobileImage||s.desktopImage)?'<div class="cs-thumb cs-tall" style="background-image:url(\''+esc(s.mobileImage||s.desktopImage)+'\')"></div>':'')+'</div>';
+    }
+    if(c.t === 'gradient') return gradientUI();
+    if(c.t === 'lineup'){
+      var nd = nudged(s, false), np = nudged(s, true);
+      if(!nd && !np) return '';
+      return '<div class="cs-warn"><b>Some pieces are nudged out of line'+(nd&&np?' on desktop and phone':(nd?' on desktop':' on phone'))+'.</b> Pieces can no longer be moved one by one, only the whole text box.' +
+        '<div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">'+(nd?'<button class="cs-mini" data-lineup="d">Line it all up (desktop)</button>':'')+(np?'<button class="cs-mini" data-lineup="p">Line it all up (phone)</button>':'')+'</div></div>';
+    }
+    var v = s[c.d];
+    if(c.p){
+      var lk = isLinked(c);
+      var input = function(k){
+        var val = s[k];
+        if(c.t === 'range') return rangeInput(c, k, val);
+        if(c.t === 'color') return colorInput(k, val);
+        if(c.t === 'seg') return '<div class="cs-seg">' + c.o.map(function(o){ return '<button data-k="'+k+'" data-v="'+o[0]+'" class="'+(val===o[0]?'on':'')+'">'+o[1]+'</button>'; }).join('') + '</div>';
+        if(c.t === 'check') return '<label class="cs-chk"><input type="checkbox" data-k="'+k+'"'+(val?' checked':'')+'> On</label>';
+        if(c.t === 'urlpair') return '<input type="url" data-k="'+k+'" value="'+esc(val)+'" placeholder="https://…">';
+        return '';
+      };
+      return '<div class="cs-f cs-dual"><div class="cs-dh"><span class="cs-lb">'+esc(c.l)+'</span><button class="cs-link'+(lk?' on':'')+'" data-link="'+c.d+'" data-p="'+c.p+'" title="When on, Phone follows Desktop">🔗 '+(lk?'Phone follows Desktop':'Separate')+'</button></div>' +
+        '<div class="cs-dv"><span>Desktop</span>'+input(c.d)+'</div><div class="cs-dv'+(lk?' off':'')+'"><span>Phone</span>'+input(c.p)+'</div></div>';
+    }
+    if(c.t === 'text' || c.t === 'url') return '<div class="cs-f"><label>'+esc(c.l)+'</label><input type="'+(c.t==='url'?'url':'text')+'" data-k="'+c.d+'" value="'+esc(v)+'"></div>';
+    if(c.t === 'img') return '<div class="cs-f"><label>'+esc(c.l)+'</label><input type="url" data-k="'+c.d+'" value="'+esc(v)+'" placeholder="https://…">'+uploadBtn(c.d)+'</div>';
+    if(c.t === 'area') return '<div class="cs-f"><label>'+esc(c.l)+'</label><textarea data-k="'+c.d+'">'+esc(v)+'</textarea></div>';
+    if(c.t === 'number') return '<div class="cs-f"><label>'+esc(c.l)+'</label><input type="number" data-k="'+c.d+'" data-num value="'+(v==null?'':v)+'"></div>';
+    if(c.t === 'check') return '<label class="cs-chk"><input type="checkbox" data-k="'+c.d+'"'+(v?' checked':'')+'> '+esc(c.l)+'</label>';
+    if(c.t === 'color') return '<div class="cs-f"><label>'+esc(c.l)+'</label>'+colorInput(c.d, v)+'</div>';
+    if(c.t === 'range') return '<div class="cs-f"><label>'+esc(c.l)+'</label>'+rangeInput(c, c.d, v)+'</div>';
+    if(c.t === 'font' || c.t === 'weight' || c.t === 'select'){
+      var o = c.t==='font' ? FONTS.concat(FONTS.indexOf(v)<0 && v ? [v] : []).map(function(x){ return [x,x]; }) : (c.t==='weight' ? WEIGHTS : c.o);
+      return '<div class="cs-f"><label>'+esc(c.l)+'</label><select data-k="'+c.d+'">' + o.map(function(x){ return '<option value="'+esc(x[0])+'"'+(String(v)===String(x[0])?' selected':'')+(c.t==='font'?' style="font-family:\''+esc(x[0])+'\',sans-serif"':'')+'>'+esc(x[1])+'</option>'; }).join('') + '</select></div>';
+    }
+    return '';
+  }
+  var PIECE_NAMES = ['Eyebrow','Heading','Sub','Button'];
+  function nudged(s, phone){
+    return PIECE_NAMES.some(function(n){ var k = n.charAt(0).toLowerCase()+n.slice(1)+'Shift';
+      return phone ? (Number(s['mobile'+n+'ShiftX'])||Number(s['mobile'+n+'ShiftY'])) : (Number(s[k+'X'])||Number(s[k+'Y'])); });
+  }
+  function curGrad(){
+    var s = cur(), key = gDev==='d' ? 'gradient' : 'mobileGradient';
+    if(!s.gradient) s.gradient = defaultGradient();
+    if(!s[key]) s[key] = JSON.parse(JSON.stringify(s.gradient));
+    return s[key];
+  }
+  function gradientUI(){
+    var g = curGrad();
+    var h = '<div class="cs-f"><div class="cs-seg" data-gdev><button data-v="d" class="'+(gDev==='d'?'on':'')+'">Desktop gradient</button><button data-v="p" class="'+(gDev==='p'?'on':'')+'">Phone gradient</button></div></div>' +
+      '<div class="cs-f"><label>Type</label><select data-g="type"><option value="off"'+(g.type==='off'?' selected':'')+'>Off</option><option value="linear"'+(g.type==='linear'?' selected':'')+'>Linear</option><option value="radial"'+(g.type==='radial'?' selected':'')+'>Radial</option></select></div>';
+    if(g.type !== 'off'){
+      h += '<div class="cs-gbar"><i style="background:linear-gradient(90deg, '+gradientCssFromStops(g.stops)+')"></i></div>' +
+        '<div class="cs-stops"><div class="cs-stop cs-stophd"><span>Colour</span><span>Opacity %</span><span>Position %</span><span></span></div>' +
+        g.stops.map(function(st, i){ return '<div class="cs-stop"><input type="color" data-st="'+i+'" data-sk="color" value="'+esc(st.color)+'"><input type="number" data-st="'+i+'" data-sk="opacity" min="0" max="100" value="'+Math.round(st.opacity*100)+'"><input type="number" data-st="'+i+'" data-sk="pos" min="0" max="100" value="'+st.pos+'"><button class="cs-x" data-strm="'+i+'" title="Remove">×</button></div>'; }).join('') +
+        '</div><button class="cs-mini" data-stadd>+ Add colour stop</button>';
+      if(g.type === 'linear') h += '<div class="cs-f" style="margin-top:10px"><label>Angle</label>'+rangeG('angle', g.angle, 0, 360, '°')+'</div>';
+      else h += '<div class="cs-f" style="margin-top:10px"><label>Centre left / right</label>'+rangeG('radialX', g.radialX, 0, 100, '%')+'</div><div class="cs-f"><label>Centre up / down</label>'+rangeG('radialY', g.radialY, 0, 100, '%')+'</div>';
+    }
+    h += '<button class="cs-mini" data-gcopy>Copy from '+(gDev==='d'?'Phone':'Desktop')+' gradient</button>';
+    return h;
+  }
+  function rangeG(k, v, min, max, u){ return '<div class="cs-rng"><input type="range" data-g="'+k+'" min="'+min+'" max="'+max+'" value="'+v+'"><input type="number" data-g="'+k+'" value="'+v+'"><small>'+u+'</small></div>'; }
+
+  function renderSide(){
+    var side = el('csSide'), h;
+    if(panel === 'slider'){
+      h = '<div class="cs-who"><div class="cs-row1"><div><h2>Slider settings</h2><div class="cs-sub">Applies to every slide in this slider</div></div></div></div>';
+      SLIDER.forEach(function(gp, i){ var id='slider'+i, o = openGroups[id] !== undefined ? openGroups[id] : true;
+        h += '<details class="cs-grp" data-grp="'+id+'"'+(o?' open':'')+'><summary>'+gp[0]+'</summary><div class="cs-gb">'+gp[1].map(ctl).join('')+'</div></details>'; });
+    } else {
+      var P = PIECES[sel];
+      h = '<div class="cs-who"><div class="cs-row1"><div><h2>'+P.name+'</h2><div class="cs-sub">Slide '+(active+1)+' · '+P.hint+'</div></div>'+(slides.length>1?'<button class="cs-all" id="csApplyAll" title="Copy this look (not text or links) to every slide">Apply to all slides</button>':'')+'</div>' +
+        '<div class="cs-chips">' + Object.keys(PIECES).map(function(k){ return '<button data-pick="'+k+'" class="'+(k===sel?'on':'')+'">'+PIECES[k].name+'</button>'; }).join('') + '</div></div>';
+      P.groups.forEach(function(gp, i){ var id = sel+i, o = openGroups[id] !== undefined ? openGroups[id] : (i < 3);
+        h += '<details class="cs-grp" data-grp="'+id+'"'+(o?' open':'')+'><summary>'+gp[0]+'</summary><div class="cs-gb">'+gp[1].map(ctl).join('')+'</div></details>'; });
+    }
+    var top = side.scrollTop; side.innerHTML = h; side.scrollTop = top;
+    var place = side.querySelector('[data-place]');
+    if(place){ var under = cur().mobileContentAlign === 'flex-end'; place.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-v')==='under') === under); }); }
+  }
+  function linkedPhoneKey(k){
+    var found = null;
+    Object.keys(PIECES).forEach(function(p){ PIECES[p].groups.forEach(function(g){ g[1].forEach(function(c){ if(c.p && c.d === k && links[c.d]) found = c.p; }); }); });
+    return found;
+  }
+  function setVal(k, v){
+    var s = cur(); s[k] = v;
+    var pk = linkedPhoneKey(k); if(pk) s[pk] = v;
+    if(SLIDER_KEYS.indexOf(k) >= 0) slides.forEach(function(x){ x[k] = v; });
+    markDirty();
+  }
+  function select(k, keepPreview){
+    panel = 'piece'; sel = k; renderRail(); renderSide();
+    if(!keepPreview) renderPreviews();
+    else ['csDFrame','csPFrame'].forEach(function(id){ var d = el(id).contentDocument; if(!d) return;
+      markSel(d); });
+  }
+  function refresh(){ renderRail(); renderSide(); renderPreviews(); renderCode(); }
+
+  // ---------- panel events ----------
+  var side = el('csSide');
+  side.addEventListener('input', function(e){
+    var t = e.target, k = t.getAttribute('data-k');
+    if(k){
+      var v = t.type === 'checkbox' ? t.checked : t.value;
+      if(t.type === 'range' || t.type === 'number') v = (v === '' ? null : Number(v));
+      if(t.classList.contains('cs-hex')){ if(!/^#[0-9a-f]{6}$/i.test(v)) return; }
+      setVal(k, v);
+      // keep the twin inputs (slider + number box, colour + hex) in step
+      var box = t.closest('.cs-rng, .cs-col');
+      if(box) box.querySelectorAll('[data-k="'+k+'"]').forEach(function(x){ if(x !== t) x.value = v == null ? '' : v; });
+      var pk = linkedPhoneKey(k);
+      if(pk) side.querySelectorAll('[data-k="'+pk+'"]').forEach(function(x){ if(x.type==='checkbox') x.checked = v; else x.value = v == null ? '' : v; });
+      if(k === 'desktopImage' || k === 'mobileImage' || k === 'eyebrow' || k === 'heading') renderRail();
+      if(k === 'overlayType' || k === 'desktopImage' || k === 'mobileImage') renderSide();
+      renderPreviews(); renderCode(); return;
+    }
+    var gk = t.getAttribute('data-g');
+    if(gk){
+      var g = curGrad(); g[gk] = gk === 'type' ? t.value : Number(t.value);
+      markDirty();
+      if(gk === 'type') renderSide(); else side.querySelectorAll('[data-g="'+gk+'"]').forEach(function(x){ if(x !== t) x.value = t.value; });
+      renderPreviews(); renderCode(); return;
+    }
+    var st = t.getAttribute('data-st');
+    if(st != null){
+      var sk = t.getAttribute('data-sk'), sv = sk === 'color' ? t.value : Number(t.value);
+      if(sk === 'opacity') sv = Math.max(0, Math.min(1, sv/100));
+      if(sk === 'pos') sv = Math.max(0, Math.min(100, sv));
+      curGrad().stops[Number(st)][sk] = sv; markDirty();
+      var bar = side.querySelector('.cs-gbar i'); if(bar) bar.style.background = 'linear-gradient(90deg, '+gradientCssFromStops(curGrad().stops)+')';
+      renderPreviews(); renderCode();
+    }
   });
+  side.addEventListener('click', function(e){
+    var t = e.target;
+    var pick = t.closest('[data-pick]'); if(pick){ select(pick.getAttribute('data-pick')); return; }
+    var sg = t.closest('.cs-seg button[data-k]'); if(sg){ setVal(sg.getAttribute('data-k'), sg.getAttribute('data-v')); renderSide(); renderPreviews(); renderCode(); return; }
+    var ln = t.closest('[data-link]');
+    if(ln){ var d = ln.getAttribute('data-link'), p = ln.getAttribute('data-p'); links[d] = !links[d]; if(links[d]) cur()[p] = JSON.parse(JSON.stringify(cur()[d])); markDirty(); renderSide(); renderPreviews(); renderCode(); return; }
+    var pl = t.closest('[data-place] button');
+    if(pl){
+      var s = cur();
+      if(pl.getAttribute('data-v') === 'under'){
+        ['Eyebrow','Heading','Sub','Button'].forEach(function(n){ s['mobile'+n+'ShiftX'] = 0; s['mobile'+n+'ShiftY'] = 0; });
+        s.mobileContentShiftX = 0; s.mobileContentShiftY = 0;
+        s.mobileContentAlign = 'flex-end'; s.mobileContentSide = 'center'; s.mobileTextAlign = 'center';
+        toast('Phone: text moved to the bottom, centred. Picture and colours unchanged.');
+      } else { s.mobileContentAlign = 'center'; toast('Phone: text on the picture'); }
+      markDirty(); renderSide(); renderPreviews(); renderCode(); return;
+    }
+    var lu = t.closest('[data-lineup]');
+    if(lu){ var sx = cur(), ph = lu.getAttribute('data-lineup') === 'p';
+      PIECE_NAMES.forEach(function(n){ var k = n.charAt(0).toLowerCase()+n.slice(1)+'Shift';
+        if(ph){ sx['mobile'+n+'ShiftX'] = 0; sx['mobile'+n+'ShiftY'] = 0; } else { sx[k+'X'] = 0; sx[k+'Y'] = 0; } });
+      markDirty(); renderSide(); renderPreviews(); renderCode(); toast('Lined up on '+(ph?'phone':'desktop')+'. Drag the text box to place it.'); return; }
+    var gd = t.closest('[data-gdev] button'); if(gd){ gDev = gd.getAttribute('data-v'); renderSide(); return; }
+    if(t.closest('[data-stadd]')){ curGrad().stops.push({pos:100, color:'#000000', opacity:0}); markDirty(); renderSide(); renderPreviews(); renderCode(); return; }
+    var rm = t.closest('[data-strm]'); if(rm){ var g = curGrad(); if(g.stops.length > 2){ g.stops.splice(Number(rm.getAttribute('data-strm')), 1); markDirty(); renderSide(); renderPreviews(); renderCode(); } else toast('A gradient needs at least 2 stops'); return; }
+    if(t.closest('[data-gcopy]')){ var s2 = cur(), mine = gDev==='d' ? 'gradient' : 'mobileGradient', other = gDev==='d' ? 'mobileGradient' : 'gradient'; s2[mine] = JSON.parse(JSON.stringify(s2[other] || s2.gradient || defaultGradient())); markDirty(); renderSide(); renderPreviews(); renderCode(); return; }
+    var up = t.closest('[data-upload]');
+    if(up){
+      var key = up.getAttribute('data-upload'), file = document.createElement('input');
+      file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif';
+      file.onchange = function(){
+        var f = file.files && file.files[0]; if(!f) return;
+        up.disabled = true; up.textContent = 'Uploading…';
+        Promise.resolve(DATA.upload(f)).then(function(url){ setVal(key, url); refresh(); toast('Image added'); })
+          .catch(function(err){ toast('Upload failed: ' + err.message); })
+          .then(function(){ up.disabled = false; up.textContent = 'Upload image'; });
+      };
+      file.click(); return;
+    }
+    if(t.id === 'csApplyAll'){
+      var keys = [];
+      PIECES[sel].groups.forEach(function(g){ g[1].forEach(function(c){ if(c.d && ['text','area','url','urlpair','img'].indexOf(c.t) < 0){ keys.push(c.d); if(c.p) keys.push(c.p); } }); });
+      if(sel === 'bg') keys = keys.concat(['gradient','mobileGradient']);
+      slides.forEach(function(x, i){ if(i !== active) keys.forEach(function(k){ x[k] = JSON.parse(JSON.stringify(cur()[k])); }); });
+      markDirty(); renderCode(); toast(PIECES[sel].name+' look copied to all '+slides.length+' slides (text and links not changed)'); return;
+    }
+  });
+  side.addEventListener('toggle', function(e){ var g = e.target.getAttribute && e.target.getAttribute('data-grp'); if(g) openGroups[g] = e.target.open; }, true);
+
+  // ---------- slides rail events ----------
+  el('csSlides').addEventListener('click', function(e){
+    var card = e.target.closest('.cs-sl'); if(!card) return;
+    var i = Number(card.getAttribute('data-i')), a = e.target.getAttribute('data-a');
+    if(a === 'up'){ if(i > 0){ slides.splice(i-1, 0, slides.splice(i,1)[0]); active = i-1; markDirty(); } }
+    else if(a === 'down'){ if(i < slides.length-1){ slides.splice(i+1, 0, slides.splice(i,1)[0]); active = i+1; markDirty(); } }
+    else if(a === 'dup'){ slides.splice(i+1, 0, JSON.parse(JSON.stringify(slides[i]))); active = i+1; if(DATA.language === 'en') localeOps.push({ type:'duplicate', sourceIndex:i, targetIndex:i+1 }); markDirty(); }
+    else if(a === 'del'){ if(slides.length > 1 && window.confirm('Delete slide '+(i+1)+'?')){ slides.splice(i,1); active = Math.max(0, Math.min(active, slides.length-1)); markDirty(); } }
+    else active = i;
+    links = {}; if(panel === 'slider') panel = 'piece';
+    refresh();
+  });
+  el('csAdd').onclick = function(){
+    var n = defaults();
+    SLIDER_KEYS.forEach(function(k){ n[k] = JSON.parse(JSON.stringify(slides[0][k])); });
+    n.heading = 'New slide'; n.headingColor = '#ffffff'; n.bgColor = '#222222';
+    slides.push(n); active = slides.length-1; links = {}; markDirty(); select('heading'); renderCode();
+  };
+  el('csSliderBtn').onclick = function(){ panel = panel === 'slider' ? 'piece' : 'slider'; renderRail(); renderSide(); renderPreviews(); };
+  el('csView').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; view = b.getAttribute('data-v'); try { localStorage.setItem('cs-view', view); } catch(err){} renderPreviews(); });
+  el('csDeskW').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; deskW = Number(b.getAttribute('data-w')); renderPreviews(); });
+
+  // ---------- top bar ----------
+  el('csTitle').value = DATA.title || '';
+  el('csTitle').addEventListener('input', markDirty);
+  el('csMoreBtn').onclick = function(e){ e.stopPropagation(); el('csMore').classList.toggle('open'); };
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('#csMore')) el('csMore').classList.remove('open');
+    if(e.target.closest('[data-close]')) root.querySelectorAll('.cs-modal').forEach(function(m){ m.classList.remove('open'); });
+  });
+  root.querySelectorAll('.cs-modal').forEach(function(m){ m.addEventListener('click', function(e){ if(e.target === m) m.classList.remove('open'); }); });
+  el('csCopyCode').onclick = function(){ copyText(generateCode(), 'Embed code'); };
+  el('csCopyCode2').onclick = function(){ copyText(generateCode(), 'Embed code'); };
+  el('csCopyJson').onclick = function(){ el('csMore').classList.remove('open'); copyText(JSON.stringify(slides), 'Project JSON'); };
+  el('csHelp').onclick = function(){ el('csMore').classList.remove('open'); el('csHelpM').classList.add('open'); };
+  el('csNew').onclick = function(){
+    el('csMore').classList.remove('open');
+    if(!window.confirm('Start a new blank banner in this project? Unsaved changes will be replaced.')) return;
+    slides = [defaults()]; active = 0; links = {}; markDirty(); select('heading'); renderCode();
+  };
+  el('csImport').onclick = function(){ el('csMore').classList.remove('open'); el('csImportArea').value = ''; el('csImportMsg').textContent = ''; el('csImportM').classList.add('open'); };
+  el('csDoImport').onclick = function(){
+    var raw = el('csImportArea').value.trim(), msg = el('csImportMsg');
+    if(!raw){ msg.textContent = 'Paste code or project JSON first.'; return; }
+    try{
+      var parsed, marker = raw.match(/(?:JCS-PROJECT-DATA|WABB-DATA)-BEGIN\s*([\s\S]*?)\s*(?:JCS-PROJECT-DATA|WABB-DATA)-END/);
+      if(marker) parsed = JSON.parse(marker[1]);
+      else { try { parsed = JSON.parse(raw); } catch(jsonError){ parsed = importLegacyCode(raw); } }
+      if(parsed && !Array.isArray(parsed) && Array.isArray(parsed.slides)) parsed = parsed.slides;
+      if(!Array.isArray(parsed) || !parsed.length) throw new Error('Empty project');
+      slides = parsed.map(function(slide){ var m = Object.assign(defaults(), slide); m.heading = normalizeStoredText(m.heading); m.subheading = normalizeStoredText(m.subheading); m.eyebrow = normalizeStoredText(m.eyebrow); m.buttonText = normalizeStoredText(m.buttonText); return m; });
+      active = 0; links = {}; markDirty(); refresh();
+      msg.className = 'cs-msg ok'; msg.textContent = 'Loaded '+slides.length+' slide(s). Click Save to keep them.';
+      setTimeout(function(){ el('csImportM').classList.remove('open'); }, 1100);
+    } catch(err){ msg.className = 'cs-msg err'; msg.textContent = "Couldn't read that. Paste code exported by this studio, Wheels Banner Studio code, or project JSON."; }
+  };
+  el('csLive').onclick = function(){
+    var w = window.open('', 'cs-live-preview');
+    if(!w){ toast('Allow pop-ups to open the live preview'); return; }
+    var bs = bannerSettings(), dh = Number(slides[0].desktopHeight||490), ph = Number(slides[0].mobileHeight||620), vw = Math.max(deskW, bs.breakpoint+1);
+    var doc = previewDocument();
+    w.document.open();
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Live preview · '+esc(el('csTitle').value||'Banner')+'</title><style>body{margin:0;background:#e9e9e9;font:13px system-ui,sans-serif;color:#222}.bar{position:sticky;top:0;background:#141414;color:#ddd;padding:9px 16px;z-index:2}.bar b{color:#fff}.wrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;padding:24px 16px}.box{overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);background:#fff}iframe{border:0;display:block}h4{margin:0 0 6px;font-weight:600}</style></head><body>' +
+      '<div class="bar"><b>Live preview</b> · '+esc(el('csTitle').value||'Banner')+' · '+esc(DATA.languageLabel||'English')+' · all '+slides.length+' slides, autoplay on · links open in a new tab</div>' +
+      '<div class="wrap"><div><h4>Desktop · '+deskW+' × '+dh+'</h4><div class="box" style="width:'+deskW+'px;max-width:calc(100vw - 32px)"><iframe id="d" style="width:'+vw+'px;height:'+dh+'px"></iframe></div></div>' +
+      '<div><h4>Phone · '+PW+' × '+ph+'</h4><div class="box" style="width:'+PW+'px"><iframe id="p" style="width:'+PW+'px;height:'+ph+'px"></iframe></div></div></div></body></html>');
+    w.document.close();
+    var bodyFix = function(width){ return doc.replace('<body>', '<body style="width:'+width+'px">'); };
+    w.document.getElementById('d').srcdoc = bodyFix(deskW);
+    w.document.getElementById('p').srcdoc = bodyFix(PW);
+  };
+  if(el('csTranslate')) el('csTranslate').onclick = function(){
+    var btn = this;
+    if(!window.confirm('Translate the English text into French? You can edit the French wording afterwards.')) return;
+    btn.disabled = true; btn.textContent = 'Translating…';
+    Promise.resolve(DATA.translate()).then(function(result){
+      if(Array.isArray(result) && result.length){ slides = result; active = 0; links = {}; markDirty(); refresh(); toast('Translated. Check the French wording, then Save.'); }
+    }).catch(function(err){ toast('Translation failed: ' + err.message); }).then(function(){ btn.disabled = false; btn.textContent = 'Translate EN → FR'; });
+  };
+
+  function doSave(){
+    var status = el('csStatus'), btn = el('csSave');
+    btn.disabled = true; status.textContent = 'Saving…';
+    Promise.resolve().then(function(){ return DATA.save({ data: slides, title: el('csTitle').value }); })
+      .then(function(){ dirty = false; status.textContent = 'All changes saved'; btn.disabled = false; toast('Saved'); })
+      .catch(function(err){ status.textContent = 'Save failed: ' + err.message; btn.disabled = false; });
+  }
+  el('csSave').onclick = doSave;
+  window.addEventListener('beforeunload', function(e){ if(!dirty) return; e.preventDefault(); e.returnValue = ''; });
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && e.key === 's'){ e.preventDefault(); doSave(); }
+    if(e.key === 'Escape') root.querySelectorAll('.cs-modal.open').forEach(function(m){ m.classList.remove('open'); });
+  });
+  window.addEventListener('resize', renderPreviews);
 
   // ---------- init ----------
-  el('jcsStatus').textContent = dirty ? 'Unsaved changes' : 'All changes saved';
-  loadFields();
-  renderAll();
+  // Wait for the empty preview frames to finish loading once; writing into them earlier
+  // gets wiped by their own first load (and with it the click/drag wiring).
+  renderRail(); renderSide(); renderCode();
+  var framesLeft = 2, started = false;
+  function startPreviews(){ if(started) return; started = true; renderPreviews(); }
+  ['csDFrame','csPFrame'].forEach(function(id){
+    var f = el(id);
+    f.addEventListener('load', function once(){ f.removeEventListener('load', once); if(--framesLeft === 0) startPreviews(); });
+    f.src = 'about:blank';
+  });
+  setTimeout(startPreviews, 800);
+
 })();

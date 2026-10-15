@@ -1,3 +1,11 @@
+## 0.3.49
+- New editor (same as the standalone): click any piece of the banner to edit it; every control kept, grouped by piece (Red label, Heading, Small text, Button, Text box, Background) plus Slider settings.
+- Desktop and Phone previews side by side (Show: Desktop / Phone / Both), built from the exact embed code. Desktop Hero 893 or Full width 1290; Phone 345.
+- Drag the whole text box (stays inside the banner, snaps to centre and margins with crosshairs). Pieces are no longer moved one by one; "Line it all up" clears old nudges.
+- Drag the picture to move it; corner handles or mouse wheel to resize; crosshairs and edge snapping. Desktop and phone separate.
+- Desktop/Phone values side by side with a link so Phone can follow Desktop. Phone shortcut: text under the picture.
+- Saving, EN/FR/USA, Translate EN → FR and the embed code work as before.
+
 ## 0.3.48
 - Live preview: links open in a new tab, so the preview stays on your banners.
 - Live preview shows the banner at its real size (canvas width, or 390 for Mobile), centred, with a bar saying exactly what you are previewing: banner name, language, Desktop/Mobile, size and "Banner X of N".
